@@ -1,5 +1,5 @@
-from plugins.c2c_pb2 import NFCData
-from plugins.c2s_pb2 import ServerData
+from nfcgate_server.plugins.c2c_pb2 import NFCData
+from nfcgate_server.plugins.c2s_pb2 import ServerData
 
 
 def format_data(data):

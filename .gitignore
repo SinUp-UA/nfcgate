@@ -1,2 +1,17 @@
 *.pyc
 .idea
+
+# Python
+__pycache__/
+.venv/
+
+# Node / Vite
+node_modules/
+web/node_modules/
+web/dist/
+web/.env
+web/.env.*
+
+# Logs
+*.log
+server/server.log

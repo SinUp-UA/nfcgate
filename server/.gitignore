@@ -1,0 +1,9 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Logs
+*.log
+nohup.out
+server.log

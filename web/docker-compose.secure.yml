@@ -1,0 +1,15 @@
+services:
+  web:
+    build:
+      context: .
+    ports:
+      - "127.0.0.1:8080:8080"
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+      - /tmp
+    volumes:
+      # Create this file locally (see SECURITY.md) and keep it secret.
+      - ./secrets/htpasswd:/etc/nginx/.htpasswd:ro
+    restart: unless-stopped

@@ -1,0 +1,7 @@
+services:
+  nfcgate-server:
+    build:
+      context: .
+    ports:
+      - "5566:5566"
+    restart: unless-stopped

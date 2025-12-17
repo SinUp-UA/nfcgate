@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 import argparse
+import datetime
+import importlib
 import socket
 import socketserver
 import ssl
 import struct
-import datetime
 import sys
 
 HOST = "0.0.0.0"
@@ -16,17 +17,24 @@ class PluginHandler:
         self.plugin_list = []
 
         for modname in plugins:
-            self.plugin_list.append((modname, __import__("plugins.mod_%s" % modname, fromlist=["plugins"])))
-            print("Loaded", "mod_%s" % modname)
+            module_name = modname
+            if "." not in modname:
+                module_name = f"nfcgate_server.plugins.mod_{modname}"
+
+            plugin = importlib.import_module(module_name)
+            self.plugin_list.append((modname, plugin))
+            print("Loaded", module_name)
 
     def filter(self, client, data):
         for modname, plugin in self.plugin_list:
-            if type(data) == list:
+            if isinstance(data, list):
                 first = data[0]
             else:
                 first = data
+
             first = plugin.handle_data(lambda *x: client.log(*x, tag=modname), first, client.state)
-            if type(data) == list:
+
+            if isinstance(data, list):
                 data = [first] + data[1:]
             else:
                 data = first
@@ -37,13 +45,13 @@ class PluginHandler:
 class NFCGateClientHandler(socketserver.StreamRequestHandler):
     def __init__(self, request, client_address, srv):
         super().__init__(request, client_address, srv)
-        
+
     def log(self, *args, tag="server"):
         self.server.log(*args, origin=self.client_address, tag=tag)
 
     def setup(self):
         super().setup()
-        
+
         self.session = None
         self.state = {}
         self.request.settimeout(300)
@@ -58,6 +66,7 @@ class NFCGateClientHandler(socketserver.StreamRequestHandler):
             except socket.timeout:
                 self.log("server", "Timeout")
                 break
+
             if len(msg_len_data) < 5:
                 break
 
@@ -100,8 +109,12 @@ class NFCGateServer(socketserver.ThreadingTCPServer):
 
         self.log("NFCGate server listening on", server_address)
         if self.tls_options:
-            self.log("TLS enabled with cert {} and key {}".format(self.tls_options["cert_file"],
-                                                                  self.tls_options["key_file"]))
+            self.log(
+                "TLS enabled with cert {} and key {}".format(
+                    self.tls_options["cert_file"],
+                    self.tls_options["key_file"],
+                )
+            )
 
     def get_request(self):
         client_socket, from_addr = super().get_request()
@@ -111,7 +124,7 @@ class NFCGateServer(socketserver.ThreadingTCPServer):
         return self.tls_options["context"].wrap_socket(client_socket, server_side=True), from_addr
 
     def log(self, *args, origin="0", tag="server"):
-        print(datetime.datetime.now(), "["+tag+"]", origin, *args)
+        print(datetime.datetime.now(), "[" + tag + "]", origin, *args)
 
     def add_client(self, client, session):
         if session is None:
@@ -139,11 +152,11 @@ class NFCGateServer(socketserver.ThreadingTCPServer):
             if client is origin:
                 continue
 
-            if type(msgs) != list:
+            if not isinstance(msgs, list):
                 msgs = [msgs]
 
             for msg in msgs:
-                client.wfile.write(int.to_bytes(len(msg), 4, byteorder='big'))
+                client.wfile.write(int.to_bytes(len(msg), 4, byteorder="big"))
                 client.wfile.write(msg)
 
         self.log("Publish reached", len(self.clients[session]) - 1, "clients")
@@ -152,8 +165,13 @@ class NFCGateServer(socketserver.ThreadingTCPServer):
 def parse_args():
     parser = argparse.ArgumentParser(prog="NFCGate server")
     parser.add_argument("plugins", type=str, nargs="*", help="List of plugin modules to load.")
-    parser.add_argument("-s", "--tls", help="Enable TLS. You must specify certificate and key.",
-                        default=False, action="store_true")
+    parser.add_argument(
+        "-s",
+        "--tls",
+        help="Enable TLS. You must specify certificate and key.",
+        default=False,
+        action="store_true",
+    )
     parser.add_argument("--tls_cert", help="TLS certificate file in PEM format.", action="store")
     parser.add_argument("--tls_key", help="TLS key file in PEM format.", action="store")
 
@@ -168,7 +186,7 @@ def parse_args():
 
         tls_options = {
             "cert_file": args.tls_cert,
-            "key_file": args.tls_key
+            "key_file": args.tls_key,
         }
         try:
             tls_options["context"] = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
@@ -176,6 +194,7 @@ def parse_args():
         except ssl.SSLError:
             print("Certificate or key could not be loaded. Please check format and file permissions!")
             sys.exit(1)
+
     return args.plugins, tls_options
 
 
