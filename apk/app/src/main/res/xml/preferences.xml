@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <PreferenceCategory
+        android:title="@string/settings_category_general"
+        android:key="general">
+        <ListPreference
+            android:title="@string/settings_language"
+            android:key="app_language"
+            android:summary="@string/settings_language_summary"
+            android:entries="@array/language_names"
+            android:entryValues="@array/language_values"
+            android:defaultValue="ru"
+            />
+        <ListPreference
+            android:title="@string/settings_theme"
+            android:key="app_theme"
+            android:summary="@string/settings_theme_summary"
+            android:entries="@array/theme_names"
+            android:entryValues="@array/theme_values"
+            android:defaultValue="dark"
+            />
+    </PreferenceCategory>
+    <PreferenceCategory
+        android:title="@string/settings_category_network"
+        android:key="network">
+        <EditTextPreference
+            android:title="@string/settings_hostname"
+            android:key="host"
+
+            android:summary="@string/settings_hostname_summary"
+            android:dialogMessage="@string/settings_hostname_dialog"
+            android:defaultValue="193.169.244.23"
+            />
+        <EditTextPreference
+            android:title="@string/settings_port"
+            android:key="port"
+
+            android:summary="@string/settings_port_summary"
+            android:dialogMessage="@string/settings_port_dialog"
+            android:inputType="number"
+            android:maxLength="5"
+            android:defaultValue="5567"
+            />
+        <EditTextPreference
+            android:title="@string/settings_session"
+            android:key="session"
+
+            android:summary="@string/settings_session_summary"
+            android:dialogMessage="@string/settings_session_dialog"
+            android:inputType="number"
+            android:maxLength="2"
+            android:defaultValue="1"
+            />
+    </PreferenceCategory>
+
+    <Preference
+        android:key="advanced_toggle"
+        android:title="@string/settings_category_advanced"
+        android:summary="@string/settings_advanced_show_summary" />
+
+    <PreferenceCategory
+        android:key="advanced"
+        android:title="@string/empty"
+        app:isPreferenceVisible="false">
+        <CheckBoxPreference
+            android:title="@string/settings_neutral_mode"
+            android:key="privacy_neutral_mode"
+            android:summary="@string/settings_neutral_mode_summary"
+            android:defaultValue="true" />
+
+        <CheckBoxPreference
+            android:title="@string/settings_watchdog"
+            android:key="network_watchdog"
+            android:summary="@string/settings_watchdog_summary"
+            android:defaultValue="true" />
+
+        <EditTextPreference
+            android:title="@string/settings_watchdog_timeout"
+            android:key="network_watchdog_timeout_sec"
+            android:summary="@string/settings_watchdog_timeout_summary"
+            android:dialogMessage="@string/settings_watchdog_timeout_dialog"
+            android:inputType="number"
+            android:maxLength="4"
+            android:defaultValue="90" />
+
+        <CheckBoxPreference
+            android:title="@string/settings_tls"
+            android:key="tls"
+            android:summary="@string/settings_tls_summary"
+            android:defaultValue="false" />
+
+        <CheckBoxPreference
+            android:title="@string/settings_pinning"
+            android:key="tls_pinning"
+            android:summary="@string/settings_pinning_summary"
+            android:defaultValue="false" />
+
+        <ListPreference
+            android:title="@string/settings_pinning_mode"
+            android:key="tls_pinning_mode"
+            android:summary="@string/settings_pinning_mode_summary"
+            android:entries="@array/pinning_mode_names"
+            android:entryValues="@array/pinning_mode_values"
+            android:defaultValue="normal_ca" />
+
+        <EditTextPreference
+            android:title="@string/settings_pinning_value"
+            android:key="tls_pinning_spki_sha256"
+            android:summary="@string/settings_pinning_value_summary"
+            android:dialogMessage="@string/settings_pinning_value_dialog"
+            android:inputType="textNoSuggestions"
+            android:defaultValue="" />
+
+        <Preference
+            android:title="@string/settings_reset_usertrust"
+            android:key="reset_usertrust"
+            android:summary="@string/settings_reset_usertrust_summary" />
+
+        <Preference
+            android:title="@string/settings_share_diagnostics"
+            android:key="share_diagnostics"
+            android:summary="@string/settings_share_diagnostics_summary" />
+
+        <EditTextPreference
+            android:title="@string/settings_send_queue_capacity"
+            android:key="send_queue_capacity"
+            android:summary="@string/settings_send_queue_capacity_summary"
+            android:dialogMessage="@string/settings_send_queue_capacity_dialog"
+            android:inputType="number"
+            android:maxLength="5"
+            android:defaultValue="256" />
+
+        <EditTextPreference
+            android:title="@string/settings_log_queue_capacity"
+            android:key="log_queue_capacity"
+            android:summary="@string/settings_log_queue_capacity_summary"
+            android:dialogMessage="@string/settings_log_queue_capacity_dialog"
+            android:inputType="number"
+            android:maxLength="5"
+            android:defaultValue="512" />
+
+        <EditTextPreference
+            android:title="@string/settings_log_rate_limit"
+            android:key="log_rate_limit_per_sec"
+            android:summary="@string/settings_log_rate_limit_summary"
+            android:dialogMessage="@string/settings_log_rate_limit_dialog"
+            android:inputType="number"
+            android:maxLength="5"
+            android:defaultValue="200" />
+
+        <CheckBoxPreference
+            android:title="@string/settings_workaround"
+            android:key="workaround"
+            android:enabled="false"
+            android:summary="@string/settings_workaround_summary" />
+    </PreferenceCategory>
+</PreferenceScreen>

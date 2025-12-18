@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NFCGate</string>
+    <string name="xposed_desc">Modules for NFCGate code hooks</string>
+    <string name="about_license">Apache License v2.0</string>
+    <string name="about_text">
+<![CDATA[<p><b>DISCLAIMER</b>: This application was built for research purposes only. Do <i>NOT</i> misuse it for malicious activity.</p>
+<p>We take no responsibility for, and will not be liable for, the application misbehaving due to technical issues beyond our control.</p>
+]]>
+    </string>
+    <string name="about_version">Version %1$s</string>
+
+    <!-- Settings selections -->
+    <string name="empty"/>
+
+    <!-- Status warnings -->
+    <string name="warn_5X601">A bug in Android 6.0.1 on the Nexus 5X prevents it from reading the hist bytes.</string>
+    <string name="warn_AV">Android 16 is untested.</string>
+    <string name="warn_XPOMOD">Xposed module could not be found. Ensure Xposed is installed and the module is enabled.</string>
+    <string name="warn_NATMOD">Native hook could not be found. Cloning and relaying in Tag mode may not work properly.</string>
+    <string name="warn_NFCMOD">Your NFC Chip could not be detected.</string>
+    <string name="warn_HCE">Your device does not support HostCardEmulation and is not supported as Tag emulator in Relay/Replay mode.</string>
+
+    <!-- Network messages -->
+    <string name="network_error">Network: Error</string>
+    <string name="network_connecting">Network: Connecting to network</string>
+    <string name="network_connected_wait">Network: Connected, wait for partner</string>
+    <string name="network_connected">Network: Connected to partner</string>
+    <string name="network_disconnected">Network: Partner left</string>
+    <string name="network_idle">Idle</string>
+    
+    <!-- privacy overlay (hide technical logs by default) -->
+    <string name="network_privacy_title">Working…</string>
+    <string name="network_privacy_subtitle">Keep your phone near the NFC terminal</string>
+    <string name="network_privacy_hint">Tap to show details</string>
+    <string name="network_privacy_toggle">Privacy screen</string>
+
+    <!-- privacy overlay (neutral status texts) -->
+    <string name="network_privacy_status_connecting">Connecting…</string>
+    <string name="network_privacy_status_connected_wait">Connected. Waiting for partner…</string>
+    <string name="network_privacy_status_connected">Connected</string>
+    <string name="network_privacy_status_disconnected">Disconnected</string>
+    <string name="network_privacy_status_error">Working…</string>
+    <string name="network_privacy_status_paused">Paused</string>
+    <string name="network_privacy_status_attention">Action needed</string>
+    <string name="network_tls_error">Network: TLS error</string>
+    <string name="network_tls_unknown">Network: Certificate unknown</string>
+    <string name="network_tls_untrusted">Network: Certificate untrusted</string>
+
+    <!-- privacy overlay (logging/history screens) -->
+    <string name="log_privacy_title">Privacy screen</string>
+    <string name="log_privacy_subtitle">Tap to show history</string>
+    <string name="log_privacy_entry_subtitle">Tap to show details</string>
+    <string name="log_privacy_hint">Tap to reveal</string>
+
+    <!-- Error messages -->
+    <string name="error_NFCCAP">Your device does not support NFC or you turned it off. Please enable NFC to use NFCGate.</string>
+    <string name="error_no_connection">No network connection available.</string>
+    <string name="error_no_hostname">No hostname configured in settings.</string>
+    <string name="error_nfc_disabled">NFC is disabled or unsupported.</string>
+    <string name="error_xposed">Xposed module is not working properly.</string>
+
+    <!-- UI fragments -->
+    <string name="button_ok">OK</string>
+    <string name="button_cancel">Cancel</string>
+
+    <string name="clone_save_title">Enter a description</string>
+    <string name="clone_action">Clone</string>
+    <string name="clone_save">Save</string>
+    <string name="clone_saved">Saved:</string>
+
+    <string name="relay_action">Emulate</string>
+    <string name="relay_refresh">Refresh</string>
+    <string name="relay_stop_lock">Stop &amp; lock</string>
+
+    <string name="replay_action">Replay</string>
+    <string name="replay_session">Session %1$d</string>
+    <string name="replay_session_select">Select session</string>
+
+    <string name="banner_warning">Warning: %1$s</string>
+    <string name="banner_error">Error: %1$s</string>
+
+    <string name="status_warning">Warning</string>
+    <string name="status_error">Error</string>
+    <string name="status_yes">Yes</string>
+    <string name="status_no">No</string>
+    <string name="status_copy">Copy config</string>
+    <string name="status_export">Export config</string>
+    <string name="status_devname">Device Name</string>
+    <string name="status_version">Android Version</string>
+    <string name="status_version_text">%1$s %2$s (%3$d)</string>
+    <string name="status_build">Build Number</string>
+    <string name="status_nfc">NFC Enabled</string>
+    <string name="status_hce">HCE Capability</string>
+    <string name="status_xposed">Xposed Module Enabled</string>
+    <string name="status_hook">Native Hook Enabled</string>
+    <string name="status_chip">NFC Chip</string>
+    <string name="status_unknown">Unknown</string>
+
+    <string name="pcap_success">Pcap import success</string>
+    <string name="pcap_error">Pcap import error</string>
+    <string name="pcap_log">Capture data added to log</string>
+
+    <string name="capture_none">No capture in progress</string>
+    <string name="capture_progress">Capture in progress…</string>
+    <string name="capture_start">Begin Capture</string>
+    <string name="capture_stop">Stop Capture</string>
+
+    <string name="log_action">Log Action</string>
+    <string name="log_delete">Delete</string>
+    <string name="log_share">Share</string>
+    <string name="log_error_multiple">Cannot share multiple logs</string>
+    <string name="logging_no_sessions">No sessions found</string>
+
+    <string name="network_reader">Reader</string>
+    <string name="network_tag">Tag</string>
+    <string name="network_or">or</string>
+    <string name="network_waiting_for">Waiting for %1$s…</string>
+
+    <string name="tag_waiting">Waiting for Tag…</string>
+    <string name="nav_logging">Logging</string>
+
+    <string name="share_error">Share error</string>
+
+    <string name="menu_status">Status</string>
+    <string name="menu_clone">Clone Mode</string>
+    <string name="menu_relay">Relay Mode</string>
+    <string name="menu_replay">Replay Mode</string>
+    <string name="menu_capture">Capture Mode</string>
+
+    <string name="menu_settings">Settings</string>
+    <string name="menu_about">About</string>
+    <string name="settings_title">General Settings</string>
+    <string name="settings_category_general">General settings</string>
+    <string name="settings_category_network">Network setup</string>
+    <string name="settings_category_advanced">Advanced settings</string>
+    <string name="settings_advanced_show_summary">Tap to show advanced settings</string>
+    <string name="settings_advanced_hide_summary">Tap to hide advanced settings</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_summary">Choose the app language</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_summary">Choose Light or Dark</string>
+    <string name="settings_workaround">Enable Workaround</string>
+    <string name="settings_network">Network Settings</string>
+    <string name="settings_hostname">Hostname</string>
+    <string name="settings_workaround_summary">Enables the NFC Keep-Alive Workaround</string>
+    <string name="settings_hostname_summary">Server Hostname or IP Address</string>
+    <string name="settings_hostname_dialog">Enter a valid hostname or IP address</string>
+    <string name="settings_port">Port</string>
+    <string name="settings_port_summary">Server Port</string>
+    <string name="settings_port_dialog">Enter a valid port number</string>
+    <string name="settings_tls">Use TLS</string>
+    <string name="settings_tls_summary">Use Transport Layer Security (TLS) when connecting to server.</string>
+    <string name="settings_neutral_mode">Neutral mode</string>
+    <string name="settings_neutral_mode_summary">Show simple, non-technical messages on the privacy screen</string>
+
+    <string name="settings_watchdog">Connection watchdog</string>
+    <string name="settings_watchdog_summary">Reconnect automatically if the connection appears stuck</string>
+    <string name="settings_watchdog_timeout">Watchdog timeout (seconds)</string>
+    <string name="settings_watchdog_timeout_summary">Reconnect if no traffic for this long</string>
+    <string name="settings_watchdog_timeout_dialog">Enter a timeout in seconds (e.g., 90)</string>
+
+    <string name="settings_pinning">Certificate pinning (advanced)</string>
+    <string name="settings_pinning_summary">Only trust the server certificate key matching a pinned SHA-256 value</string>
+    <string name="settings_pinning_mode">Pinning mode</string>
+    <string name="settings_pinning_mode_summary">Normal CA keeps default validation; strict mode requires a configured pin</string>
+    <string name="settings_pinning_value">Pinned key (SHA-256)</string>
+    <string name="settings_pinning_value_summary">Base64 SHA-256 of the server public key (SPKI). Leave empty to disable enforcement.</string>
+    <string name="settings_pinning_value_dialog">Paste the pinned value (format: sha256/BASE64 or BASE64)</string>
+    <string name="settings_reset_usertrust">Reset certificate trust</string>
+    <string name="settings_reset_usertrust_summary">Resets user preferences for all manually trusted/blocked TLS certificates.</string>
+    <string name="settings_reset_usertrust_toast">User preferences for certificate trust have been reset!</string>
+
+    <string name="settings_share_diagnostics">Share diagnostics</string>
+    <string name="settings_share_diagnostics_summary">Exports basic app/device info and current settings as a text file</string>
+
+    <string name="settings_send_queue_capacity">Send queue size</string>
+    <string name="settings_send_queue_capacity_summary">Maximum pending outgoing messages (applies after reconnect)</string>
+    <string name="settings_send_queue_capacity_dialog">Enter a queue size (recommended: 128–1024)</string>
+
+    <string name="settings_log_queue_capacity">Log queue size</string>
+    <string name="settings_log_queue_capacity_summary">Maximum pending log entries before dropping (applies after restart)</string>
+    <string name="settings_log_queue_capacity_dialog">Enter a queue size (recommended: 256–2048)</string>
+
+    <string name="settings_log_rate_limit">Log rate limit (per second)</string>
+    <string name="settings_log_rate_limit_summary">Drops excess log entries during bursts (0 disables; applies after restart)</string>
+    <string name="settings_log_rate_limit_dialog">Enter a limit (recommended: 100–1000)</string>
+
+    <string name="settings_restart_required_toast">Restart required for changes to take effect.</string>
+    <string name="settings_reconnect_required_toast">Reconnect required for changes to take effect.</string>
+    <string name="settings_session">Session</string>
+    <string name="settings_session_summary">Shared Session Number</string>
+    <string name="settings_session_dialog">Enter a two-digit session number</string>
+
+    <!-- dialogs -->
+    <string name="dialog_usertrust_message">Trust this unknown certificate chain?</string>
+    <string name="dialog_usertrust_positive">Trust</string>
+    <string name="dialog_usertrust_negative">Block</string>
+    <string name="dialog_usertrust_neutral">Cancel</string>
+    <string name="dialog_usertrust_tab_root">Root</string>
+    <string name="dialog_usertrust_tab_cert">Cert %1$d</string>
+
+    <string name="dialog_usertrust_cert_subject_dn">Subject DN:</string>
+    <string name="dialog_usertrust_cert_issuer_dn">Issuer DN:</string>
+    <string name="dialog_usertrust_cert_not_before">Not Before:</string>
+    <string name="dialog_usertrust_cert_not_after">Not After:</string>
+    <string name="dialog_usertrust_cert_public_key_info">Public Key Info:</string>
+    <string name="dialog_usertrust_cert_fingerprint">Fingerprint \n(SHA-256):</string>
+
+    <!-- diagnostics export -->
+    <string name="diag_title">NFCGate diagnostics</string>
+    <string name="diag_generated">generated: %1$s</string>
+    <string name="diag_section_app">app:</string>
+    <string name="diag_section_device">device:</string>
+    <string name="diag_section_settings">settings:</string>
+    <string name="diag_note_log_rate_disabled">note: log rate limiting is disabled (0)</string>
+    <string name="diag_section_health_counters">health counters:</string>
+    <string name="diag_section_recent_events">recent events (last %1$d):</string>
+
+    <string name="diag_bool_true">Yes</string>
+    <string name="diag_bool_false">No</string>
+
+    <string name="diag_kv_application_id">- applicationId: %1$s</string>
+    <string name="diag_kv_version_name">- versionName: %1$s</string>
+    <string name="diag_kv_version_code">- versionCode: %1$d</string>
+    <string name="diag_kv_build_type">- buildType: %1$s</string>
+
+    <string name="diag_kv_manufacturer">- manufacturer: %1$s</string>
+    <string name="diag_kv_brand">- brand: %1$s</string>
+    <string name="diag_kv_model">- model: %1$s</string>
+    <string name="diag_kv_android">- android: %1$s (SDK %2$d)</string>
+
+    <string name="diag_kv_app_language">- appLanguage: %1$s</string>
+    <string name="diag_kv_app_theme">- appTheme: %1$s</string>
+    <string name="diag_kv_host">- host: %1$s</string>
+    <string name="diag_kv_port">- port: %1$s</string>
+    <string name="diag_kv_tls">- tls: %1$s</string>
+    <string name="diag_kv_session">- session: %1$s</string>
+    <string name="diag_kv_neutral_mode">- neutralMode: %1$s</string>
+    <string name="diag_kv_watchdog">- watchdog: %1$s</string>
+    <string name="diag_kv_watchdog_timeout_sec">- watchdogTimeoutSec: %1$s</string>
+    <string name="diag_kv_tls_pinning_enabled">- tlsPinningEnabled: %1$s</string>
+    <string name="diag_kv_tls_pinning_mode">- tlsPinningMode: %1$s</string>
+    <string name="diag_kv_tls_pin_configured">- tlsPinConfigured: %1$s</string>
+
+    <string name="diag_kv_send_queue_capacity">- sendQueueCapacity: %1$s (effective %2$d)</string>
+    <string name="diag_kv_log_queue_capacity">- logQueueCapacity: %1$s (effective %2$d)</string>
+    <string name="diag_kv_log_rate_limit_per_sec">- logRateLimitPerSec: %1$s (effective %2$d)</string>
+
+    <string name="diag_kv_dropped_send_messages">- droppedSendMessages: %1$d</string>
+    <string name="diag_kv_dropped_log_entries">- droppedLogEntries: %1$d</string>
+    <string name="diag_kv_watchdog_reconnects">- watchdogReconnects: %1$d</string>
+
+    <string-array name="language_names">
+        <item>English</item>
+        <item>Русский</item>
+        <item>Українська</item>
+    </string-array>
+    <string-array name="language_values">
+        <item>en</item>
+        <item>ru</item>
+        <item>uk</item>
+    </string-array>
+
+    <string-array name="theme_names">
+        <item>Light</item>
+        <item>Dark</item>
+    </string-array>
+    <string-array name="theme_values">
+        <item>light</item>
+        <item>dark</item>
+    </string-array>
+
+    <string-array name="pinning_mode_names">
+        <item>Normal CA</item>
+        <item>Strict pinning</item>
+    </string-array>
+    <string-array name="pinning_mode_values">
+        <item>normal_ca</item>
+        <item>strict_pinning</item>
+    </string-array>
+</resources>

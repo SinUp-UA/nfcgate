@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+        <ListView
+            android:id="@+id/log_entries"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            />
+    </LinearLayout>
+
+    <!-- Privacy-friendly overlay (hides history by default) -->
+    <LinearLayout
+        android:id="@+id/lay_privacy_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="?android:attr/windowBackground"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="24dp"
+        android:visibility="visible">
+
+        <ImageView
+            android:id="@+id/img_privacy_state"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_log_black_24dp"
+            android:scaleType="centerInside" />
+
+        <TextView
+            android:id="@+id/txt_privacy_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/log_privacy_title"
+            style="@style/TextAppearance.AppCompat.Medium" />
+
+        <TextView
+            android:id="@+id/txt_privacy_subtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="@string/log_privacy_entry_subtitle"
+            style="@style/TextAppearance.AppCompat.Small" />
+
+        <ProgressBar
+            android:id="@+id/prg_privacy_pulse"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:indeterminate="true" />
+
+        <TextView
+            android:id="@+id/txt_privacy_hint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="@string/log_privacy_hint"
+            style="@style/TextAppearance.AppCompat.Caption" />
+    </LinearLayout>
+
+    <!-- Small toggle shown when overlay is hidden -->
+    <TextView
+        android:id="@+id/btn_privacy_toggle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:background="?android:attr/selectableItemBackground"
+        android:padding="12dp"
+        android:text="@string/network_privacy_toggle"
+        style="@style/TextAppearance.AppCompat.Caption"
+        android:visibility="gone" />
+
+</FrameLayout>

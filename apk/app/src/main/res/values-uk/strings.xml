@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NFCGate</string>
+    <string name="xposed_desc">Модулі для перехоплення коду NFCGate</string>
+    <string name="about_license">Apache License v2.0</string>
+    <string name="about_text">
+<![CDATA[<p><b>ВІДМОВА ВІД ВІДПОВІДАЛЬНОСТІ</b>: цей застосунок створено лише для дослідницьких цілей. <i>НЕ</i> використовуйте його для шкідливої діяльності.</p>
+<p>Ми не несемо відповідальності та не будемо відповідати за некоректну роботу застосунку через технічні проблеми поза нашим контролем.</p>
+]]>
+    </string>
+    <string name="about_version">Версія %1$s</string>
+
+    <!-- Settings selections -->
+    <string name="empty" />
+
+    <!-- Status warnings -->
+    <string name="warn_5X601">Помилка в Android 6.0.1 на Nexus 5X заважає читанню байтів HIST.</string>
+    <string name="warn_AV">Android 16 не тестувався.</string>
+    <string name="warn_XPOMOD">Модуль Xposed не знайдено. Переконайтеся, що Xposed встановлено і модуль увімкнено.</string>
+    <string name="warn_NATMOD">Нативний хук не знайдено. Клонування та ретрансляція в режимі Tag можуть працювати некоректно.</string>
+    <string name="warn_NFCMOD">Не вдалося визначити NFC-чип.</string>
+    <string name="warn_HCE">Пристрій не підтримує Host Card Emulation і не підходить для емуляції тега в режимах Relay/Replay.</string>
+
+    <!-- Network messages -->
+    <string name="network_error">Мережа: помилка</string>
+    <string name="network_connecting">Мережа: підключення</string>
+    <string name="network_connected_wait">Мережа: підключено, очікування партнера</string>
+    <string name="network_connected">Мережа: підключено до партнера</string>
+    <string name="network_disconnected">Мережа: партнер від’єднався</string>
+    <string name="network_idle">Очікування</string>
+
+    <!-- privacy overlay (hide technical logs by default) -->
+    <string name="network_privacy_title">Працюю…</string>
+    <string name="network_privacy_subtitle">Тримайте телефон біля NFC-термінала</string>
+    <string name="network_privacy_hint">Торкніться, щоб показати деталі</string>
+    <string name="network_privacy_toggle">Екран приватності</string>
+
+    <!-- privacy overlay (neutral status texts) -->
+    <string name="network_privacy_status_connecting">Підключення…</string>
+    <string name="network_privacy_status_connected_wait">Підключено. Очікування партнера…</string>
+    <string name="network_privacy_status_connected">Підключено</string>
+    <string name="network_privacy_status_disconnected">Від’єднано</string>
+    <string name="network_privacy_status_error">Працюю…</string>
+    <string name="network_privacy_status_paused">Пауза</string>
+    <string name="network_privacy_status_attention">Потрібна дія</string>
+    <string name="network_tls_error">Мережа: помилка TLS</string>
+    <string name="network_tls_unknown">Мережа: невідомий сертифікат</string>
+    <string name="network_tls_untrusted">Мережа: сертифікат не довірений</string>
+
+    <!-- privacy overlay (logging/history screens) -->
+    <string name="log_privacy_title">Екран приватності</string>
+    <string name="log_privacy_subtitle">Торкніться, щоб показати історію</string>
+    <string name="log_privacy_entry_subtitle">Торкніться, щоб показати деталі</string>
+    <string name="log_privacy_hint">Торкніться, щоб відкрити</string>
+
+    <!-- Error messages -->
+    <string name="error_NFCCAP">Пристрій не підтримує NFC або NFC вимкнено. Увімкніть NFC, щоб використовувати NFCGate.</string>
+    <string name="error_no_connection">Немає доступного мережевого підключення.</string>
+    <string name="error_no_hostname">У налаштуваннях не задано хост.</string>
+    <string name="error_nfc_disabled">NFC вимкнено або не підтримується.</string>
+    <string name="error_xposed">Модуль Xposed працює некоректно.</string>
+
+    <!-- UI fragments -->
+    <string name="button_ok">ОК</string>
+    <string name="button_cancel">Скасувати</string>
+
+    <string name="clone_save_title">Введіть опис</string>
+    <string name="clone_action">Клонувати</string>
+    <string name="clone_save">Зберегти</string>
+    <string name="clone_saved">Збережено:</string>
+
+    <string name="relay_action">Емулювати</string>
+    <string name="relay_refresh">Оновити</string>
+    <string name="relay_stop_lock">Зупинити та заблокувати</string>
+
+    <string name="replay_action">Відтворити</string>
+    <string name="replay_session">Сесія %1$d</string>
+    <string name="replay_session_select">Оберіть сесію</string>
+
+    <string name="banner_warning">Попередження: %1$s</string>
+    <string name="banner_error">Помилка: %1$s</string>
+
+    <string name="status_warning">Попередження</string>
+    <string name="status_error">Помилка</string>
+    <string name="status_yes">Так</string>
+    <string name="status_no">Ні</string>
+    <string name="status_copy">Скопіювати конфіг</string>
+    <string name="status_export">Експортувати конфіг</string>
+    <string name="status_devname">Назва пристрою</string>
+    <string name="status_version">Версія Android</string>
+    <string name="status_version_text">%1$s %2$s (%3$d)</string>
+    <string name="status_build">Номер збірки</string>
+    <string name="status_nfc">NFC увімкнено</string>
+    <string name="status_hce">Підтримка HCE</string>
+    <string name="status_xposed">Модуль Xposed увімкнено</string>
+    <string name="status_hook">Нативний хук увімкнено</string>
+    <string name="status_chip">NFC-чип</string>
+    <string name="status_unknown">Невідомо</string>
+
+    <string name="pcap_success">Імпорт PCAP успішний</string>
+    <string name="pcap_error">Помилка імпорту PCAP</string>
+    <string name="pcap_log">Дані захоплення додано до логу</string>
+
+    <string name="capture_none">Захоплення не виконується</string>
+    <string name="capture_progress">Триває захоплення…</string>
+    <string name="capture_start">Почати захоплення</string>
+    <string name="capture_stop">Зупинити захоплення</string>
+
+    <string name="log_action">Дія з логом</string>
+    <string name="log_delete">Видалити</string>
+    <string name="log_share">Поділитися</string>
+    <string name="log_error_multiple">Неможливо поділитися кількома логами</string>
+    <string name="logging_no_sessions">Сесій не знайдено</string>
+
+    <string name="network_reader">Зчитувач</string>
+    <string name="network_tag">Тег</string>
+    <string name="network_or">або</string>
+    <string name="network_waiting_for">Очікування: %1$s…</string>
+
+    <string name="tag_waiting">Очікування тега…</string>
+    <string name="nav_logging">Журнал</string>
+
+    <string name="share_error">Помилка надсилання</string>
+
+    <string name="menu_status">Статус</string>
+    <string name="menu_clone">Режим клонування</string>
+    <string name="menu_relay">Режим ретрансляції</string>
+    <string name="menu_replay">Режим повтору</string>
+    <string name="menu_capture">Режим захоплення</string>
+
+    <string name="menu_settings">Налаштування</string>
+    <string name="menu_about">Про застосунок</string>
+    <string name="settings_title">Загальні налаштування</string>
+    <string name="settings_category_general">Загальні налаштування</string>
+    <string name="settings_category_network">Налаштування мережі</string>
+    <string name="settings_category_advanced">Розширені налаштування</string>
+    <string name="settings_advanced_show_summary">Натисніть, щоб показати розширені налаштування</string>
+    <string name="settings_advanced_hide_summary">Натисніть, щоб приховати розширені налаштування</string>
+    <string name="settings_language">Мова</string>
+    <string name="settings_language_summary">Оберіть мову застосунку</string>
+    <string name="settings_theme">Тема</string>
+    <string name="settings_theme_summary">Оберіть світлу або темну</string>
+    <string name="settings_workaround">Увімкнути обхід</string>
+    <string name="settings_network">Мережеві налаштування</string>
+    <string name="settings_hostname">Хост</string>
+    <string name="settings_workaround_summary">Вмикає обхід NFC Keep-Alive</string>
+    <string name="settings_hostname_summary">Ім’я хоста або IP-адреса сервера</string>
+    <string name="settings_hostname_dialog">Введіть коректне ім’я хоста або IP-адресу</string>
+    <string name="settings_port">Порт</string>
+    <string name="settings_port_summary">Порт сервера</string>
+    <string name="settings_port_dialog">Введіть коректний номер порту</string>
+    <string name="settings_tls">Використовувати TLS</string>
+    <string name="settings_tls_summary">Використовувати Transport Layer Security (TLS) під час підключення до сервера.</string>
+    <string name="settings_neutral_mode">Нейтральний режим</string>
+    <string name="settings_neutral_mode_summary">Показувати прості, нетехнічні повідомлення на екрані приватності</string>
+
+    <string name="settings_watchdog">Watchdog з’єднання</string>
+    <string name="settings_watchdog_summary">Перепідключатися автоматично, якщо з’єднання виглядає завислим</string>
+    <string name="settings_watchdog_timeout">Тайм-аут watchdog (секунди)</string>
+    <string name="settings_watchdog_timeout_summary">Перепідключити, якщо немає трафіку так довго</string>
+    <string name="settings_watchdog_timeout_dialog">Введіть тайм-аут у секундах (наприклад, 90)</string>
+
+    <string name="settings_pinning">Пінінг сертифіката (для досвідчених)</string>
+    <string name="settings_pinning_summary">Довіряти лише ключу сертифіката сервера, що відповідає закріпленому SHA-256</string>
+    <string name="settings_pinning_mode">Режим пінінгу</string>
+    <string name="settings_pinning_mode_summary">Normal CA лишає стандартну перевірку; строгий режим вимагає заданий пін</string>
+    <string name="settings_pinning_value">Закріплений ключ (SHA-256)</string>
+    <string name="settings_pinning_value_summary">Base64 SHA-256 публічного ключа сервера (SPKI). Залиште порожнім, щоб вимкнути перевірку.</string>
+    <string name="settings_pinning_value_dialog">Вставте значення (формат: sha256/BASE64 або BASE64)</string>
+    <string name="settings_reset_usertrust">Скинути довіру до сертифікатів</string>
+    <string name="settings_reset_usertrust_summary">Скидає користувацькі налаштування для всіх вручну довірених/заблокованих TLS сертифікатів.</string>
+    <string name="settings_reset_usertrust_toast">Користувацькі налаштування довіри до сертифікатів скинуто!</string>
+
+    <string name="settings_share_diagnostics">Поділитися діагностикою</string>
+    <string name="settings_share_diagnostics_summary">Експортує базову інформацію про застосунок/пристрій і поточні налаштування у текстовий файл</string>
+
+    <string name="settings_send_queue_capacity">Розмір черги відправлення</string>
+    <string name="settings_send_queue_capacity_summary">Максимум очікуючих вихідних повідомлень (застосовується після перепідключення)</string>
+    <string name="settings_send_queue_capacity_dialog">Введіть розмір черги (рекомендовано: 128–1024)</string>
+
+    <string name="settings_log_queue_capacity">Розмір черги логів</string>
+    <string name="settings_log_queue_capacity_summary">Максимум очікуючих записів логу перед відкиданням (застосовується після перезапуску)</string>
+    <string name="settings_log_queue_capacity_dialog">Введіть розмір черги (рекомендовано: 256–2048)</string>
+
+    <string name="settings_log_rate_limit">Ліміт логування (за секунду)</string>
+    <string name="settings_log_rate_limit_summary">Відкидає зайві записи під час сплесків (0 вимикає; застосовується після перезапуску)</string>
+    <string name="settings_log_rate_limit_dialog">Введіть ліміт (рекомендовано: 100–1000)</string>
+
+    <string name="settings_restart_required_toast">Потрібен перезапуск, щоб зміни набули чинності.</string>
+    <string name="settings_reconnect_required_toast">Потрібне перепідключення, щоб зміни набули чинності.</string>
+    <string name="settings_session">Сесія</string>
+    <string name="settings_session_summary">Спільний номер сесії</string>
+    <string name="settings_session_dialog">Введіть двозначний номер сесії</string>
+
+    <!-- dialogs -->
+    <string name="dialog_usertrust_message">Довіряти цьому невідомому ланцюжку сертифікатів?</string>
+    <string name="dialog_usertrust_positive">Довіряти</string>
+    <string name="dialog_usertrust_negative">Заблокувати</string>
+    <string name="dialog_usertrust_neutral">Скасувати</string>
+    <string name="dialog_usertrust_tab_root">Root</string>
+    <string name="dialog_usertrust_tab_cert">Сертифікат %1$d</string>
+
+    <string name="dialog_usertrust_cert_subject_dn">Subject DN:</string>
+    <string name="dialog_usertrust_cert_issuer_dn">Issuer DN:</string>
+    <string name="dialog_usertrust_cert_not_before">Дійсний з:</string>
+    <string name="dialog_usertrust_cert_not_after">Дійсний до:</string>
+    <string name="dialog_usertrust_cert_public_key_info">Інформація про публічний ключ:</string>
+    <string name="dialog_usertrust_cert_fingerprint">Відбиток \n(SHA-256):</string>
+
+    <!-- diagnostics export -->
+    <string name="diag_title">Діагностика NFCGate</string>
+    <string name="diag_generated">створено: %1$s</string>
+    <string name="diag_section_app">застосунок:</string>
+    <string name="diag_section_device">пристрій:</string>
+    <string name="diag_section_settings">налаштування:</string>
+    <string name="diag_note_log_rate_disabled">примітка: ліміт логування вимкнено (0)</string>
+    <string name="diag_section_health_counters">лічильники стану:</string>
+    <string name="diag_section_recent_events">останні події (останні %1$d):</string>
+
+    <string name="diag_bool_true">Так</string>
+    <string name="diag_bool_false">Ні</string>
+
+    <string name="diag_kv_application_id">- applicationId: %1$s</string>
+    <string name="diag_kv_version_name">- versionName: %1$s</string>
+    <string name="diag_kv_version_code">- versionCode: %1$d</string>
+    <string name="diag_kv_build_type">- buildType: %1$s</string>
+
+    <string name="diag_kv_manufacturer">- виробник: %1$s</string>
+    <string name="diag_kv_brand">- бренд: %1$s</string>
+    <string name="diag_kv_model">- модель: %1$s</string>
+    <string name="diag_kv_android">- android: %1$s (SDK %2$d)</string>
+
+    <string name="diag_kv_app_language">- мова_застосунку: %1$s</string>
+    <string name="diag_kv_app_theme">- тема_застосунку: %1$s</string>
+    <string name="diag_kv_host">- хост: %1$s</string>
+    <string name="diag_kv_port">- порт: %1$s</string>
+    <string name="diag_kv_tls">- tls: %1$s</string>
+    <string name="diag_kv_session">- сесія: %1$s</string>
+    <string name="diag_kv_neutral_mode">- нейтральний_режим: %1$s</string>
+    <string name="diag_kv_watchdog">- watchdog: %1$s</string>
+    <string name="diag_kv_watchdog_timeout_sec">- тайм-аут_watchdog_сек: %1$s</string>
+    <string name="diag_kv_tls_pinning_enabled">- tls_pinning_увімкнено: %1$s</string>
+    <string name="diag_kv_tls_pinning_mode">- режим_tls_pinning: %1$s</string>
+    <string name="diag_kv_tls_pin_configured">- tls_pin_задано: %1$s</string>
+
+    <string name="diag_kv_send_queue_capacity">- sendQueueCapacity: %1$s (effective %2$d)</string>
+    <string name="diag_kv_log_queue_capacity">- logQueueCapacity: %1$s (effective %2$d)</string>
+    <string name="diag_kv_log_rate_limit_per_sec">- logRateLimitPerSec: %1$s (effective %2$d)</string>
+
+    <string name="diag_kv_dropped_send_messages">- droppedSendMessages: %1$d</string>
+    <string name="diag_kv_dropped_log_entries">- droppedLogEntries: %1$d</string>
+    <string name="diag_kv_watchdog_reconnects">- watchdogReconnects: %1$d</string>
+
+    <string-array name="language_names">
+        <item>English</item>
+        <item>Русский</item>
+        <item>Українська</item>
+    </string-array>
+    <string-array name="language_values">
+        <item>en</item>
+        <item>ru</item>
+        <item>uk</item>
+    </string-array>
+
+    <string-array name="theme_names">
+        <item>Світла</item>
+        <item>Темна</item>
+    </string-array>
+    <string-array name="theme_values">
+        <item>light</item>
+        <item>dark</item>
+    </string-array>
+
+    <string-array name="pinning_mode_names">
+        <item>Звичайна перевірка CA</item>
+        <item>Строгий пінінг</item>
+    </string-array>
+    <string-array name="pinning_mode_values">
+        <item>normal_ca</item>
+        <item>strict_pinning</item>
+    </string-array>
+</resources>

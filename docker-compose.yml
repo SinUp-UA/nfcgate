@@ -1,0 +1,40 @@
+services:
+  nfcgate-server:
+    build:
+      context: ./server
+    ports:
+      - "5567:5567"
+    environment:
+      # Internal admin API (for web UI export). Not exposed to the host.
+      NFCGATE_ADMIN_HTTP_PORT: "8081"
+    volumes:
+      - ./server/logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.create_connection(('127.0.0.1',5567),2); s.close()"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  web:
+    build:
+      context: ./web
+    ports:
+      # Keep UI private by default; put a reverse proxy with TLS in front if needed.
+      - "127.0.0.1:8080:8080"
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+      - /tmp
+    volumes:
+      - ./web/secrets/htpasswd:/etc/nginx/.htpasswd:ro
+      - ./server/logs:/logs:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/ >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s

@@ -1,0 +1,70 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+ext {
+    protobufVersion = '3.25.2'
+}
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.11.1'
+        classpath 'com.google.protobuf:protobuf-gradle-plugin:0.9.4'
+
+        // NOTE: Do not place your application dependencies here; they belong
+        // in the individual module build.gradle files
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven {
+            url "https://api.xposed.info"
+        }
+    }
+}
+
+tasks.register('collectApks') {
+    group = 'build'
+    description = 'Build and copy APKs to dist/ (debug + releaseUnsigned when available)'
+
+    dependsOn(':app:assembleDebug', ':app:assembleReleaseUnsigned')
+
+    doLast {
+        def distDir = file("${rootDir}/dist")
+        distDir.mkdirs()
+
+        def versionName = null
+        try {
+            versionName = project(':app').android.defaultConfig.versionName
+        } catch (Throwable ignored) {
+            versionName = 'unknown'
+        }
+        def ts = new Date().format('yyyyMMdd_HHmmss')
+        def prefix = "nfcgate-${versionName}-${ts}".replaceAll('[^A-Za-z0-9._-]', '_')
+
+        def apks = [
+                [src: file("${rootDir}/app/build/outputs/apk/debug/app-debug.apk"), label: 'debug'],
+                [src: file("${rootDir}/app/build/outputs/apk/releaseUnsigned/app-releaseUnsigned.apk"), label: 'releaseUnsigned'],
+                [src: file("${rootDir}/app/build/outputs/apk/release/app-release.apk"), label: 'release'],
+                // Legacy output name (only exists if someone built unsigned release previously)
+                [src: file("${rootDir}/app/build/outputs/apk/release/app-release-unsigned.apk"), label: 'release-unsigned'],
+        ]
+
+        apks.each { e ->
+            if (e.src.exists()) {
+                def outName = "${prefix}-${e.label}.apk"
+                copy {
+                    from e.src
+                    into distDir
+                    rename { outName }
+                }
+                println("[collectApks] Copied ${e.src} -> ${distDir}/${outName}")
+            }
+        }
+    }
+}

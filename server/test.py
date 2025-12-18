@@ -1,256 +1,118 @@
-#!/usr/bin/env python 
+#!/usr/bin/env python3
+"""Minimal smoke test for the NFCGate TCP relay.
 
-import socket, struct
+Protocol (client -> server):
+- 4 bytes big-endian length (N)
+- 1 byte session id (1..255)
+- N bytes payload
 
-from sys import stdout
-from os import urandom
+Protocol (server -> client):
+- 4 bytes big-endian length (N)
+- N bytes payload
 
-from messages.c2c_pb2 import NFCData, Status
-from messages.c2s_pb2 import Session, Data
-from messages.metaMessage_pb2 import Wrapper
+This test opens two clients in the same session and verifies that a payload
+sent from client A arrives at client B.
+"""
 
-def printMsg(msg):
-    assert len(msg) <= 74
-    print msg, " "*(74-len(msg)),
+from __future__ import annotations
 
-def getSocket():
-    tsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    tsock.connect(("127.0.0.1", 5566))
-    return tsock
+import argparse
+import socket
+import struct
+import sys
+import time
+
+from nfcgate_server.plugins.c2c_pb2 import NFCData
+from nfcgate_server.plugins.c2s_pb2 import ServerData
 
 
-def SocketReadN(sock, n):
-    buf = b''
-    while n > 0:
-        data = sock.recv(n)
-        if data == b'':
-            raise RuntimeError('unexpected connection close')
-        buf += data
-        n -= len(data)
+def _recv_exact(sock: socket.socket, n: int) -> bytes:
+    buf = b""
+    while len(buf) < n:
+        chunk = sock.recv(n - len(buf))
+        if not chunk:
+            raise ConnectionError("connection closed")
+        buf += chunk
     return buf
 
 
-def RecvOneMsg(sock):
+def recv_message(sock: socket.socket) -> bytes:
+    length_bytes = _recv_exact(sock, 4)
+    (length,) = struct.unpack("!I", length_bytes)
+    if length == 0:
+        return b""
+    return _recv_exact(sock, length)
+
+
+def send_message(sock: socket.socket, session: int, payload: bytes) -> None:
+    if not (0 <= session <= 255):
+        raise ValueError("session must fit into one byte")
+    header = struct.pack("!IB", len(payload), session)
+    sock.sendall(header + payload)
+
+
+def make_log_plugin_payload(data: bytes) -> bytes:
+    nfc = NFCData()
+    nfc.data_source = NFCData.CARD
+    nfc.data_type = NFCData.INITIAL
+    nfc.timestamp = int(time.time())
+    nfc.data = data
+
+    msg = ServerData()
+    msg.opcode = ServerData.OP_PSH
+    msg.data = nfc.SerializeToString()
+    return msg.SerializeToString()
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=5567)
+    parser.add_argument("--session", type=int, default=1)
+    parser.add_argument("--timeout", type=float, default=5.0)
+    parser.add_argument(
+        "--raw",
+        action="store_true",
+        help="Send raw payload bytes (use this if server is started with no plugins).",
+    )
+    args = parser.parse_args()
+
+    a = socket.create_connection((args.host, args.port), timeout=args.timeout)
+    b = socket.create_connection((args.host, args.port), timeout=args.timeout)
     try:
-        lengthbuf = SocketReadN(sock, 4)
-        length = struct.unpack(">i", lengthbuf)[0]
-        wrapper = Wrapper()
-        wrapper.ParseFromString(SocketReadN(sock, length))
-        return wrapper
-    except:
-        return None
+        a.settimeout(args.timeout)
+        b.settimeout(args.timeout)
 
-def sendOneMsg(msg, sock):
-    mm = msg.SerializeToString()
-    sock.sendall(struct.pack(">i", len(mm)) + mm)
+        raw_payload = f"ping:{time.time()}".encode("utf-8")
+        payload = raw_payload if args.raw else make_log_plugin_payload(raw_payload)
 
-def transceive(msg, sock):
-    sendOneMsg(msg, sock)
-    return RecvOneMsg(sock)
+        # Join/associate both sockets with the same session id.
+        send_message(a, args.session, payload)
+        send_message(b, args.session, b"hello" if args.raw else make_log_plugin_payload(b"hello"))
 
-def getStatusMessage():
-    data = Data()
-    data.errcode = Data.ERROR_NOERROR
-    status = Status()
-    status.code = Status.CARD_FOUND
-    iWrapper = Wrapper()
-    iWrapper.Status.MergeFrom(status)
-    data.blob = iWrapper.SerializeToString()
-    wrapper = Wrapper()
-    wrapper.Data.MergeFrom(data)
-    return wrapper
+        # B should now receive the first payload sent by A.
+        _ = recv_message(b)
 
-def getSessionMessage(opcode, errcode=Session.ERROR_NOERROR, secret=None):
-    session = Session()
-    session.opcode = opcode
-    session.errcode = errcode
-    if secret is not None:
-        session.session_secret = secret
-    wrapper = Wrapper()
-    wrapper.Session.MergeFrom(session)
-    return wrapper
+        # Now send a second message from A; B should receive it.
+        raw_payload2 = b"smoke-test:" + raw_payload
+        payload2 = raw_payload2 if args.raw else make_log_plugin_payload(raw_payload2)
+        send_message(a, args.session, payload2)
 
-def getDummyDataMessage():
-    data = Data()
-    data.errcode = Data.ERROR_NOERROR
-    nfcdata = NFCData()
-    nfcdata.data_source = NFCData.CARD
-    nfcdata.data_bytes = urandom(8)
-    iWrapper = Wrapper()
-    iWrapper.NFCData.MergeFrom(nfcdata)
-    data.blob = iWrapper.SerializeToString()
-    wrapper = Wrapper()
-    wrapper.Data.MergeFrom(data)
-    return wrapper
+        got = recv_message(b)
+        if got != payload2:
+            print("FAILED: payload mismatch")
+            print("expected:", payload2)
+            print("got     :", got)
+            return 2
 
-def assertSessionMessageState(msg, opcode, errcode=Session.ERROR_NOERROR):
-    assert msg.WhichOneof('message') == 'Session'
-    assert msg.Session.opcode == opcode
-    assert msg.Session.errcode == errcode
-
-def assertDataMessageState(msg, errcode=Data.ERROR_NOERROR, blob=None):
-    assert msg.WhichOneof('message') == 'Data'
-    assert msg.Data.errcode == errcode
-    if blob is not None:
-        assert msg.Data.blob == blob
+        print("OK: relay working")
+        return 0
+    finally:
+        try:
+            a.close()
+        finally:
+            b.close()
 
 
-### Session tests
-sock = getSocket()
-printMsg('Testing session creation...')
-msg = getSessionMessage(Session.SESSION_CREATE)
-reply = transceive(msg, sock)
-assertSessionMessageState(reply, Session.SESSION_CREATE_SUCCESS)
-assert reply.Session.session_secret != ""
-secret = reply.Session.session_secret
-print '[OK]'
-# State: sock1 in Session 1
-
-printMsg('Testing illegal creation of second session...')
-msg = getSessionMessage(Session.SESSION_CREATE)
-reply = transceive(msg, sock)
-assertSessionMessageState(reply, Session.SESSION_CREATE_FAIL, Session.ERROR_CREATE_ALREADY_HAS_SESSION)
-print '[OK]'
-# State: sock1 in Session 1
-
-sock4 = getSocket()
-printMsg('Testing legal creation of second session')
-msg = getSessionMessage(Session.SESSION_CREATE)
-reply = transceive(msg, sock4)
-assertSessionMessageState(reply, Session.SESSION_CREATE_SUCCESS)
-assert reply.Session.session_secret != ""
-secret2 = reply.Session.session_secret
-print '[OK]'
-# State: sock1 in Session 1, sock4 in Session2
-
-sock2 = getSocket()
-printMsg('Testing session join...')
-msg = getSessionMessage(Session.SESSION_JOIN, secret=secret)
-reply = transceive(msg, sock2)
-assertSessionMessageState(reply, Session.SESSION_JOIN_SUCCESS)
-notify = RecvOneMsg(sock)
-assertSessionMessageState(notify, Session.SESSION_PEER_JOINED)
-print '[OK]'
-# State: sock1 and sock2 in Session 1, sock4 in Session 2
-
-printMsg('Testing illegal second session join...')
-msg = getSessionMessage(Session.SESSION_JOIN, secret=secret2)
-reply = transceive(msg, sock2)
-assertSessionMessageState(reply, Session.SESSION_JOIN_FAIL, Session.ERROR_JOIN_ALREADY_HAS_SESSION)
-print '[OK]'
-# State: sock1 and sock2 in Session 1, sock4 in Session 2
-
-sock3 = getSocket()
-printMsg('Testing join on full session...')
-msg = getSessionMessage(Session.SESSION_JOIN, secret=secret)
-reply = transceive(msg, sock3)
-assertSessionMessageState(reply, Session.SESSION_JOIN_FAIL, Session.ERROR_JOIN_SESSION_FULL)
-print '[OK]'
-# State: sock1 and sock2 in Session 1, sock4 in Session 2
-
-printMsg('Testing legal second session join...')
-msg = getSessionMessage(Session.SESSION_JOIN, secret=secret2)
-reply = transceive(msg, sock3)
-assertSessionMessageState(reply, Session.SESSION_JOIN_SUCCESS)
-notify = RecvOneMsg(sock4)
-assertSessionMessageState(notify, Session.SESSION_PEER_JOINED)
-print '[OK]'
-# State: sock1 and sock2 in Session 1, sock4 and sock3 in Session 2
-
-printMsg('Testing message passing in session 1...')
-msg = getDummyDataMessage()
-reply = transceive(msg, sock)
-assertDataMessageState(reply)
-msgI = RecvOneMsg(sock2)
-assertDataMessageState(msgI, blob=msg.Data.blob)
-print '[OK]'
-
-printMsg('Testing NFC Card found status message in Session 1...')
-msg = getStatusMessage()
-reply = transceive(msg, sock)
-assertDataMessageState(reply)
-msgI = RecvOneMsg(sock2)
-assertDataMessageState(msgI, blob=msg.Data.blob)
-print '[OK]'
-
-printMsg('Testing message reply in session 1...')
-msg = getDummyDataMessage()
-reply = transceive(msg, sock2)
-assertDataMessageState(reply)
-msgI = RecvOneMsg(sock)
-assertDataMessageState(msgI, blob=msg.Data.blob)
-print '[OK]'
-
-printMsg('Testing message passing in session 2...')
-msg = getDummyDataMessage()
-reply = transceive(msg, sock3)
-assertDataMessageState(reply)
-msgI = RecvOneMsg(sock4)
-assertDataMessageState(msgI, blob=msg.Data.blob)
-print '[OK]'
-
-printMsg('Testing message reply in session 2...')
-msg = getDummyDataMessage()
-reply = transceive(msg, sock4)
-assertDataMessageState(reply)
-msgI = RecvOneMsg(sock3)
-assertDataMessageState(msgI, blob=msg.Data.blob)
-print '[OK]'
-
-# TODO Interleaved send and receive
-printMsg('Testing session leave...')
-msg = getSessionMessage(Session.SESSION_LEAVE, secret=secret)
-reply = transceive(msg, sock2)
-assertSessionMessageState(reply, Session.SESSION_LEAVE_SUCCESS)
-notify = RecvOneMsg(sock)
-assertSessionMessageState(notify, Session.SESSION_PEER_LEFT)
-print '[OK]'
-# State: sock1 in Session 1, sock4 and sock3 in Session 2
-
-printMsg('Testing session leave 2...')
-msg = getSessionMessage(Session.SESSION_LEAVE, secret=secret2)
-reply = transceive(msg, sock3)
-assertSessionMessageState(reply, Session.SESSION_LEAVE_SUCCESS)
-notify = RecvOneMsg(sock4)
-assertSessionMessageState(notify, Session.SESSION_PEER_LEFT)
-print '[OK]'
-# State: sock1 in Session1, sock4 in Session 2
-
-printMsg('Testing join of recently vacated session...')
-msg = getSessionMessage(Session.SESSION_JOIN, secret=secret)
-reply = transceive(msg, sock3)
-assertSessionMessageState(reply, Session.SESSION_JOIN_SUCCESS)
-notify = RecvOneMsg(sock)
-assertSessionMessageState(notify, Session.SESSION_PEER_JOINED)
-print '[OK]'
-# State: sock1 and sock3 in Session 1, sock4 in Session 2
-
-printMsg('Testing session leave 3...')
-msg = getSessionMessage(Session.SESSION_LEAVE, secret=secret)
-reply = transceive(msg, sock)
-assertSessionMessageState(reply, Session.SESSION_LEAVE_SUCCESS)
-notify = RecvOneMsg(sock3)
-assertSessionMessageState(notify, Session.SESSION_PEER_LEFT)
-print '[OK]'
-# State: sock3 in Session 1, sock4 in Session 2
-
-printMsg('Testing session destruction 1...')
-msg = getSessionMessage(Session.SESSION_LEAVE, secret=secret2)
-reply = transceive(msg, sock4)
-assertSessionMessageState(reply, Session.SESSION_LEAVE_SUCCESS)
-print '[OK]'
-# State: sock3 in Session 1, Session 2 destroyed
-
-printMsg('Testing session destruction 2...')
-msg = getSessionMessage(Session.SESSION_LEAVE, secret=secret)
-reply = transceive(msg, sock3)
-assertSessionMessageState(reply, Session.SESSION_LEAVE_SUCCESS)
-print '[OK]'
-# State: All Sessions destroyed
-
-printMsg('Testing join on recently destroyed session...')
-msg = getSessionMessage(Session.SESSION_JOIN, secret=secret)
-reply = transceive(msg, sock)
-assertSessionMessageState(reply, Session.SESSION_JOIN_FAIL, Session.ERROR_JOIN_UNKNOWN_SECRET)
-print '[OK]'
-# State: All Sessions destroyed
+if __name__ == "__main__":
+    raise SystemExit(main())

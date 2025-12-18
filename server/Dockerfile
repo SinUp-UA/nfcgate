@@ -11,7 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-EXPOSE 5566
+EXPOSE 5567 8081
 
 # Default: run with the built-in log plugin.
 CMD ["python", "-m", "nfcgate_server.server", "log"]

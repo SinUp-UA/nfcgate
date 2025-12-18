@@ -1,7 +1,10 @@
 services:
   nfcgate-server:
+    container_name: nfcgate-server
     build:
       context: .
     ports:
-      - "5566:5566"
+      - "5567:5567"
+    volumes:
+      - ./logs:/app/logs
     restart: unless-stopped

@@ -12,8 +12,9 @@ RUN npm run build
 
 FROM nginx:1.27-alpine
 
-# Custom nginx config (basic auth + security headers)
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Custom nginx config (basic auth + security headers + rate limiting)
+COPY nginx.conf /etc/nginx/nginx.conf
+COPY nginx-site.conf /etc/nginx/conf.d/default.conf
 
 # Static assets
 COPY --from=build /app/dist /usr/share/nginx/html

@@ -1,0 +1,7 @@
+# Ensure shell scripts work on Linux
+*.sh text eol=lf
+
+# Keep docker and compose files consistent
+Dockerfile text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
