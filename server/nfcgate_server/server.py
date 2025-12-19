@@ -1088,7 +1088,26 @@ class PluginHandler:
             else:
                 first = data
 
-            first = plugin.handle_data(lambda *x: client.log(*x, tag=modname), first, client.state)
+            try:
+                first = plugin.handle_data(lambda *x: client.log(*x, tag=modname), first, client.state)
+            except Exception as e:
+                # Keep relay functional even if a logging/decoding plugin fails.
+                # Common causes: client sends raw bytes while a protobuf plugin is enabled, or TLS mismatch.
+                try:
+                    already = bool(client.state.get("_plugin_error_logged"))
+                    if not already:
+                        client.state["_plugin_error_logged"] = True
+                        client.log(
+                            "plugin_error",
+                            modname,
+                            type(e).__name__,
+                            str(e) or "(no message)",
+                            "hint: check client TLS/raw settings vs server plugins",
+                        )
+                except Exception:
+                    pass
+                # Preserve original payload so session relay can continue.
+                first = data[0] if isinstance(data, list) else data
 
             if isinstance(data, list):
                 data = [first] + data[1:]
