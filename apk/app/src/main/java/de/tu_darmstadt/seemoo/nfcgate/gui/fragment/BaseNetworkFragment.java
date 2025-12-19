@@ -10,6 +10,7 @@ import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Bundle;
+import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.preference.PreferenceManager;
@@ -32,6 +33,8 @@ import de.tu_darmstadt.seemoo.nfcgate.gui.log.SessionLogEntryFragment;
 import de.tu_darmstadt.seemoo.nfcgate.network.data.NetworkStatus;
 
 public abstract class BaseNetworkFragment extends BaseFragment implements LogInserter.SIDChangedListener {
+    private static final String TAG = "BaseNetworkFragment";
+
     // UI references
     View mTagWaiting;
     TextView mTagWaitingText;
@@ -222,7 +225,13 @@ public abstract class BaseNetworkFragment extends BaseFragment implements LogIns
     }
 
     protected void stopAndLock() {
-        reset();
+        // Defensive: users can trigger this while the fragment/activity is in a transient state.
+        // Never crash the app; best-effort stop the mode and show privacy overlay.
+        try {
+            reset();
+        } catch (Exception e) {
+            Log.e(TAG, "stopAndLock(): reset failed", e);
+        }
 
         setPrivacyOverlayVisible(true);
         setPrivacySubtitle(R.string.network_privacy_status_paused);
@@ -442,8 +451,19 @@ public abstract class BaseNetworkFragment extends BaseFragment implements LogIns
      * Reset method called initially and when user presses reset button
      */
     protected void reset() {
-        getNfc().stopMode();
-        mStatusBanner.set(StatusBanner.State.IDLE, getString(R.string.network_idle));
+        try {
+            getNfc().stopMode();
+        } catch (Exception e) {
+            Log.e(TAG, "reset(): stopMode failed", e);
+        }
+
+        if (mStatusBanner != null) {
+            try {
+                mStatusBanner.set(StatusBanner.State.IDLE, getString(R.string.network_idle));
+            } catch (Exception e) {
+                Log.e(TAG, "reset(): status banner update failed", e);
+            }
+        }
 
         setPrivacyOverlayVisible(false);
         setPrivacySubtitle(R.string.network_privacy_subtitle);
