@@ -1,78 +1,51 @@
-# React + TypeScript + Vite
+# NFCGate Web Admin Panel
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This folder contains the React (Vite) admin UI for the NFCGate relay server.
 
-Currently, two official plugins are available:
+In Docker, the UI is served as static files by Nginx and proxies `/api/*` requests to the server's internal admin HTTP API.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Run (recommended)
 
-## React Compiler
+From repo root:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-
-  ## Security / protected access
-
-  - Dev server is configured to bind to localhost only (`127.0.0.1`).
-  - For protected access in Docker (Basic Auth + security headers), see [SECURITY.md](SECURITY.md).
-      // other options...
-    },
-  },
-])
+```bash
+docker compose up --build -d
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+By default, the web UI is bound to `127.0.0.1:8080` (see root compose + Nginx config).
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Protected access
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+There are two layers of protection:
+
+1) **Nginx Basic Auth** (outer gate)
+
+- Configure it via `web/secrets/htpasswd` (mounted into the container).
+- See [SECURITY.md](SECURITY.md) for the secure Docker setup.
+
+2) **In-panel admin accounts** (application auth)
+
+- When opening the UI for the first time, it will ask to create the first admin (bootstrap).
+- After that, you log in with admin username/password, and can create additional admins from the panel.
+
+### Token header
+
+Because Nginx Basic Auth uses the `Authorization: Basic ...` header, the panel sends its auth token using:
+
+- `X-NFCGate-Token: <token>`
+
+## Session-based analysis
+
+The panel supports filtering log export, APDU stats and tail by the TCP relay `session`.
+
+- Use the `Session` input to restrict queries to a specific session.
+- Tail output includes the `session` column.
+
+## Local development
+
+```bash
+npm install
+npm run dev
 ```
+
+Note: the dev server is intended to bind to localhost only.

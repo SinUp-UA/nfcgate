@@ -15,6 +15,20 @@ Build and run with docker-compose:
 
 The server will listen on port 5567 and is published as `localhost:5567`.
 
+## Admin HTTP API (for web panel)
+
+The server also exposes an internal admin HTTP API (default port `8081`, configurable via `NFCGATE_ADMIN_HTTP_PORT`).
+This API is intended to be reverse-proxied by the `web/` container at `/api/*`.
+
+### Authentication
+
+The admin API is protected by application-level admin accounts (login/password → token). The web panel stores the token locally in the browser.
+
+Important note when running behind Nginx Basic Auth:
+
+- `Authorization` header is used for `Basic ...`.
+- The panel therefore sends the API token via `X-NFCGate-Token` header.
+
 ## Ubuntu VPS notes
 
 - Recommended: run via Docker on Ubuntu 20.04+.
