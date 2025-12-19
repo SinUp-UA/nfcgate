@@ -3,14 +3,18 @@ package de.tu_darmstadt.seemoo.nfcgate.gui.log;
 import androidx.lifecycle.ViewModelProviders;
 import android.content.Context;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.preference.PreferenceManager;
 import androidx.appcompat.widget.Toolbar;
 import android.view.ActionMode;
 import android.view.LayoutInflater;
 import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
@@ -28,6 +32,9 @@ import de.tu_darmstadt.seemoo.nfcgate.db.model.SessionLogViewModel;
 import de.tu_darmstadt.seemoo.nfcgate.gui.component.CustomArrayAdapter;
 
 public class LoggingFragment extends Fragment {
+    private final Handler mPrivacyHandler = new Handler(Looper.getMainLooper());
+    private final Runnable mPrivacyAutoTimeoutRunnable = () -> setPrivacyOverlayVisible(true);
+
     // UI references
     ListView mLog;
     TextView mEmptyText;
@@ -59,11 +66,14 @@ public class LoggingFragment extends Fragment {
         mPrivacyOverlay = v.findViewById(R.id.lay_privacy_overlay);
         mPrivacyToggle = v.findViewById(R.id.btn_privacy_toggle);
 
+        // custom toolbar actions
+        setHasOptionsMenu(true);
+
         if (mPrivacyOverlay != null && mPrivacyToggle != null) {
             // Default: hide session history from bystanders.
             setPrivacyOverlayVisible(true);
-            mPrivacyOverlay.setOnClickListener(view -> setPrivacyOverlayVisible(false));
-            mPrivacyToggle.setOnClickListener(view -> setPrivacyOverlayVisible(true));
+            mPrivacyOverlay.setOnClickListener(view -> revealSensitiveContent());
+            mPrivacyToggle.setOnClickListener(view -> hideSensitiveContent());
         }
 
         // setup db model
@@ -100,12 +110,101 @@ public class LoggingFragment extends Fragment {
         return v;
     }
 
+    @Override
+    public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
+        inflater.inflate(R.menu.toolbar_logging, menu);
+        super.onCreateOptionsMenu(menu, inflater);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        if (item.getItemId() == R.id.action_export_recent) {
+            int seconds = getExportLastSeconds();
+            if (seconds <= 0) {
+                Toast.makeText(getActivity(), getString(R.string.settings_export_last_seconds_dialog), Toast.LENGTH_LONG).show();
+                return true;
+            }
+            mLogAction.shareLastSeconds(seconds);
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    private int getExportLastSeconds() {
+        if (getActivity() == null) {
+            return 0;
+        }
+        String raw = PreferenceManager.getDefaultSharedPreferences(getActivity())
+                .getString("export_last_seconds", "30");
+        int value;
+        try {
+            value = Integer.parseInt(raw);
+        } catch (Exception ignored) {
+            value = 30;
+        }
+        if (value < 1) {
+            value = 1;
+        } else if (value > 3600) {
+            value = 3600;
+        }
+        return value;
+    }
+
+    private int getPrivacyAutoTimeoutSec() {
+        if (getActivity() == null) {
+            return 0;
+        }
+        String raw = PreferenceManager.getDefaultSharedPreferences(getActivity())
+                .getString("privacy_auto_timeout_sec", "30");
+        int value;
+        try {
+            value = Integer.parseInt(raw);
+        } catch (Exception ignored) {
+            value = 30;
+        }
+        if (value < 0) {
+            value = 0;
+        } else if (value > 3600) {
+            value = 3600;
+        }
+        return value;
+    }
+
+    private void schedulePrivacyAutoTimeout() {
+        cancelPrivacyAutoTimeout();
+        int sec = getPrivacyAutoTimeoutSec();
+        if (sec <= 0) {
+            return;
+        }
+        mPrivacyHandler.postDelayed(mPrivacyAutoTimeoutRunnable, sec * 1000L);
+    }
+
+    private void cancelPrivacyAutoTimeout() {
+        mPrivacyHandler.removeCallbacks(mPrivacyAutoTimeoutRunnable);
+    }
+
+    private void revealSensitiveContent() {
+        setPrivacyOverlayVisible(false);
+        schedulePrivacyAutoTimeout();
+    }
+
+    private void hideSensitiveContent() {
+        cancelPrivacyAutoTimeout();
+        setPrivacyOverlayVisible(true);
+    }
+
     private void setPrivacyOverlayVisible(boolean visible) {
         if (mPrivacyOverlay == null || mPrivacyToggle == null)
             return;
 
         mPrivacyOverlay.setVisibility(visible ? View.VISIBLE : View.GONE);
         mPrivacyToggle.setVisibility(visible ? View.GONE : View.VISIBLE);
+    }
+
+    @Override
+    public void onPause() {
+        cancelPrivacyAutoTimeout();
+        super.onPause();
     }
 
     @Override

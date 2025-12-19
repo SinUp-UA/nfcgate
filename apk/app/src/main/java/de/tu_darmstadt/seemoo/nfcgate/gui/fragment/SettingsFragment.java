@@ -3,8 +3,15 @@ package de.tu_darmstadt.seemoo.nfcgate.gui.fragment;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
+import android.text.InputType;
+import android.util.Log;
+import android.view.ViewGroup;
+import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
+import androidx.preference.CheckBoxPreference;
 import androidx.preference.ListPreference;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceCategory;
@@ -12,23 +19,35 @@ import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceManager;
 
 import java.io.OutputStream;
+import java.util.HashMap;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import java.util.Map;
+import java.util.List;
 
 import de.tu_darmstadt.seemoo.nfcgate.BuildConfig;
 import de.tu_darmstadt.seemoo.nfcgate.NFCGateApp;
 import de.tu_darmstadt.seemoo.nfcgate.R;
 import de.tu_darmstadt.seemoo.nfcgate.gui.component.ContentShare;
 import de.tu_darmstadt.seemoo.nfcgate.network.UserTrustManager;
+import de.tu_darmstadt.seemoo.nfcgate.util.ConnectionPresets;
 import de.tu_darmstadt.seemoo.nfcgate.util.DiagnosticsStats;
 import de.tu_darmstadt.seemoo.nfcgate.util.PrefUtils;
 import de.tu_darmstadt.seemoo.nfcgate.util.RecentEvents;
+import de.tu_darmstadt.seemoo.nfcgate.util.SettingsLock;
 
 public class SettingsFragment extends PreferenceFragmentCompat implements SharedPreferences.OnSharedPreferenceChangeListener {
+    private static final String TAG = "SettingsFragment";
+
     private SharedPreferences mPrefs;
     private boolean mSanitizingPref = false;
+
+    private boolean mSettingsUnlocked = false;
+
+    private final Map<String, CharSequence> mOriginalSummaries = new HashMap<>();
+    private final Map<String, Preference.SummaryProvider<?>> mOriginalSummaryProviders = new HashMap<>();
 
     private static final String PREF_SHOW_ADVANCED = "show_advanced_settings";
     private static final String KEY_ADVANCED_TOGGLE = "advanced_toggle";
@@ -61,45 +80,550 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
-        addPreferencesFromResource(R.xml.preferences);
+        try {
+            // PreferenceFragmentCompat-native API (ensures preference manager is initialized).
+            setPreferencesFromResource(R.xml.preferences, rootKey);
 
-        if (getActivity() != null) {
-            mPrefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
+            // Prefer the preference manager's shared prefs; fall back to default shared prefs.
+            try {
+                mPrefs = getPreferenceManager().getSharedPreferences();
+            } catch (Exception ignored) {
+                mPrefs = null;
+            }
+            if (mPrefs == null && getActivity() != null) {
+                mPrefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
+            }
+
+            ListPreference languagePref = findPreference(NFCGateApp.PREF_APP_LANGUAGE);
+            if (languagePref != null) {
+                languagePref.setSummaryProvider(ListPreference.SimpleSummaryProvider.getInstance());
+            }
+
+            ListPreference themePref = findPreference(NFCGateApp.PREF_APP_THEME);
+            if (themePref != null) {
+                themePref.setSummaryProvider(ListPreference.SimpleSummaryProvider.getInstance());
+            }
+
+            ListPreference pinningModePref = findPreference("tls_pinning_mode");
+            if (pinningModePref != null) {
+                pinningModePref.setSummaryProvider(ListPreference.SimpleSummaryProvider.getInstance());
+            }
+
+            setupAdvancedAccordion();
+            setupSettingsLock();
+            setupConnectionPresets();
+
+            Preference resetTrustPref = findPreference("reset_usertrust");
+            if (resetTrustPref != null) {
+                resetTrustPref.setOnPreferenceClickListener((preference) -> {
+                    UserTrustManager.getInstance().clearTrust();
+                    Toast.makeText(getContext(), R.string.settings_reset_usertrust_toast, Toast.LENGTH_LONG).show();
+                    return true;
+                });
+            }
+
+            Preference shareDiagnosticsPref = findPreference("share_diagnostics");
+            if (shareDiagnosticsPref != null) {
+                shareDiagnosticsPref.setOnPreferenceClickListener((preference) -> {
+                    shareDiagnostics();
+                    return true;
+                });
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Settings initialization failed", e);
+            try {
+                // Show an empty preference screen instead of crashing.
+                if (getContext() != null) {
+                    setPreferenceScreen(getPreferenceManager().createPreferenceScreen(getContext()));
+                }
+            } catch (Exception ignored) {
+                // ignore
+            }
+            Toast.makeText(getContext(), "Settings crashed. Please send Logcat.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void setupSettingsLock() {
+        if (getActivity() == null || mPrefs == null) {
+            return;
         }
 
-        ListPreference languagePref = findPreference(NFCGateApp.PREF_APP_LANGUAGE);
-        if (languagePref != null) {
-            languagePref.setSummaryProvider(ListPreference.SimpleSummaryProvider.getInstance());
+        final androidx.fragment.app.FragmentActivity activity = getActivity();
+        if (activity == null) {
+            return;
         }
 
-        ListPreference themePref = findPreference(NFCGateApp.PREF_APP_THEME);
-        if (themePref != null) {
-            themePref.setSummaryProvider(ListPreference.SimpleSummaryProvider.getInstance());
-        }
+        final CheckBoxPreference lockEnabledPref = findPreference("settings_lock_enabled");
+        final Preference changePinPref = findPreference("settings_lock_change_pin");
 
-        ListPreference pinningModePref = findPreference("tls_pinning_mode");
-        if (pinningModePref != null) {
-            pinningModePref.setSummaryProvider(ListPreference.SimpleSummaryProvider.getInstance());
-        }
+        if (changePinPref != null) {
+            changePinPref.setOnPreferenceClickListener(pref -> {
+                if (getActivity() == null) {
+                    return true;
+                }
 
-        setupAdvancedAccordion();
+                // If lock is enabled, require unlock before changing the PIN.
+                if (SettingsLock.isEnabled(activity) && SettingsLock.isPinSet(activity) && !mSettingsUnlocked) {
+                    promptUnlockThen(this::promptSetNewPin);
+                    return true;
+                }
 
-        Preference resetTrustPref = findPreference("reset_usertrust");
-        if (resetTrustPref != null) {
-            resetTrustPref.setOnPreferenceClickListener((preference) -> {
-            UserTrustManager.getInstance().clearTrust();
-            Toast.makeText(getContext(), R.string.settings_reset_usertrust_toast, Toast.LENGTH_LONG).show();
-            return true;
+                promptSetNewPin();
+                return true;
             });
         }
 
-        Preference shareDiagnosticsPref = findPreference("share_diagnostics");
-        if (shareDiagnosticsPref != null) {
-            shareDiagnosticsPref.setOnPreferenceClickListener((preference) -> {
-            shareDiagnostics();
-            return true;
+        if (lockEnabledPref != null) {
+            lockEnabledPref.setOnPreferenceChangeListener((pref, newValue) -> {
+                if (getActivity() == null) {
+                    return false;
+                }
+
+                boolean enable = Boolean.TRUE.equals(newValue);
+                if (!enable) {
+                    // Disabling lock never requires PIN.
+                    mSettingsUnlocked = false;
+                    applyLockedBehavior(false);
+                    return true;
+                }
+
+                // Enabling lock requires a PIN to be set.
+                if (!SettingsLock.isPinSet(activity)) {
+                    promptSetNewPin(() -> {
+                        // Ensure the toggle stays enabled.
+                        if (mPrefs != null) {
+                            mPrefs.edit().putBoolean("settings_lock_enabled", true).apply();
+                        }
+                        mSettingsUnlocked = true; // the user just set the PIN
+                        applyLockedBehavior(true);
+                    }, () -> {
+                        // If user cancels PIN setup, do not enable lock.
+                        if (mPrefs != null) {
+                            mPrefs.edit().putBoolean("settings_lock_enabled", false).apply();
+                        }
+                        mSettingsUnlocked = false;
+                        applyLockedBehavior(false);
+                    });
+                    return false; // handled asynchronously
+                }
+
+                // Lock is enabled and PIN exists, keep settings locked until user unlocks.
+                mSettingsUnlocked = false;
+                applyLockedBehavior(true);
+                return true;
             });
         }
+
+        // Apply initial locked state.
+        applyLockedBehavior(SettingsLock.isEnabled(activity));
+
+        // Guard sensitive preferences.
+        guardSensitivePreferenceClick("host");
+        guardSensitivePreferenceClick("port");
+        guardSensitivePreferenceClick("session");
+
+        guardSensitivePreferenceChange("tls");
+        guardSensitivePreferenceChange("tls_pinning");
+        guardSensitivePreferenceClick("tls_pinning_mode");
+        guardSensitivePreferenceClick("tls_pinning_spki_sha256");
+    }
+
+    private void setupConnectionPresets() {
+        final Preference presetsPref = findPreference("connection_presets");
+        if (presetsPref == null) {
+            return;
+        }
+
+        presetsPref.setOnPreferenceClickListener(pref -> {
+            showConnectionPresetsDialog();
+            return true;
+        });
+    }
+
+    private void showConnectionPresetsDialog() {
+        if (getActivity() == null) {
+            return;
+        }
+
+        final List<ConnectionPresets.Preset> presets = ConnectionPresets.load(requireActivity());
+        final AlertDialog.Builder b = new AlertDialog.Builder(requireActivity())
+                .setTitle(R.string.settings_connection_presets)
+                .setNegativeButton(R.string.button_cancel, null)
+                .setNeutralButton(R.string.settings_connection_recents, (dialog, which) -> showConnectionRecentsDialog())
+                .setPositiveButton(R.string.settings_connection_presets_save_current, (dialog, which) -> promptSaveCurrentPresetName());
+
+        if (presets.isEmpty()) {
+            b.setMessage(R.string.settings_connection_presets_empty);
+        } else {
+            final String[] names = new String[presets.size()];
+            for (int i = 0; i < presets.size(); i++) {
+                names[i] = presets.get(i).name;
+            }
+
+            b.setItems(names, (dialog, which) -> {
+                if (which >= 0 && which < presets.size()) {
+                    showPresetActionsDialog(presets.get(which));
+                }
+            });
+        }
+
+        b.show();
+    }
+
+    private void showConnectionRecentsDialog() {
+        if (getActivity() == null) {
+            return;
+        }
+
+        final List<ConnectionPresets.Recent> recents = ConnectionPresets.loadRecents(requireActivity());
+        final AlertDialog.Builder b = new AlertDialog.Builder(requireActivity())
+                .setTitle(R.string.settings_connection_recents)
+                .setNegativeButton(R.string.button_cancel, null)
+                .setNeutralButton(R.string.settings_connection_recents_clear, (dialog, which) -> {
+                    ConnectionPresets.clearRecents(requireActivity());
+                    Toast.makeText(getContext(), R.string.settings_connection_recents_cleared_toast, Toast.LENGTH_LONG).show();
+                });
+
+        if (recents.isEmpty()) {
+            b.setMessage(R.string.settings_connection_recents_empty);
+        } else {
+            final String[] labels = new String[recents.size()];
+            for (int i = 0; i < recents.size(); i++) {
+                labels[i] = formatRecentLabel(recents.get(i));
+            }
+
+            b.setItems(labels, (dialog, which) -> {
+                if (which >= 0 && which < recents.size()) {
+                    showRecentActionsDialog(recents.get(which));
+                }
+            });
+        }
+
+        b.show();
+    }
+
+    private String formatRecentLabel(ConnectionPresets.Recent recent) {
+        if (recent == null) {
+            return "";
+        }
+
+        String hostPort = (recent.host == null ? "" : recent.host) + ":" + (recent.port == null ? "" : recent.port);
+        String sess = (recent.session == null || recent.session.trim().isEmpty()) ? "" : (" s" + recent.session.trim());
+        String tls = recent.tls ? " TLS" : "";
+
+        String when;
+        try {
+            SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
+            when = df.format(new Date(recent.ts));
+        } catch (Exception ignored) {
+            when = "";
+        }
+
+        if (when.isEmpty()) {
+            return hostPort + sess + tls;
+        }
+        return when + "  " + hostPort + sess + tls;
+    }
+
+    private void showRecentActionsDialog(ConnectionPresets.Recent recent) {
+        if (getActivity() == null || recent == null) {
+            return;
+        }
+
+        new AlertDialog.Builder(requireActivity())
+                .setTitle(formatRecentLabel(recent))
+                .setPositiveButton(R.string.settings_connection_presets_apply, (dialog, which) -> {
+                    Runnable apply = () -> {
+                        ConnectionPresets.applyToSettings(requireActivity(), recent);
+                        Toast.makeText(getContext(), R.string.settings_connection_recents_applied_toast, Toast.LENGTH_LONG).show();
+                    };
+
+                    if (isLockActiveAndLocked()) {
+                        promptUnlockThen(apply);
+                    } else {
+                        apply.run();
+                    }
+                })
+                .setNeutralButton(R.string.settings_connection_presets_delete, (dialog, which) -> {
+                    boolean removed = ConnectionPresets.deleteRecent(requireActivity(), recent.id);
+                    if (removed) {
+                        Toast.makeText(getContext(), R.string.settings_connection_recents_deleted_toast, Toast.LENGTH_LONG).show();
+                    }
+                })
+                .setNegativeButton(R.string.button_cancel, null)
+                .show();
+    }
+
+    private void promptSaveCurrentPresetName() {
+        if (getActivity() == null) {
+            return;
+        }
+
+        final EditText input = new EditText(requireActivity());
+        input.setHint(getString(R.string.settings_connection_presets_name_hint));
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        input.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        int pad = (int) (16 * getResources().getDisplayMetrics().density);
+        LinearLayout wrapper = new LinearLayout(requireActivity());
+        wrapper.setOrientation(LinearLayout.VERTICAL);
+        wrapper.setPadding(pad, pad / 2, pad, 0);
+        wrapper.addView(input);
+
+        new AlertDialog.Builder(requireActivity())
+                .setTitle(R.string.settings_connection_presets_save_current)
+                .setView(wrapper)
+                .setPositiveButton(R.string.button_ok, (dialog, which) -> {
+                    String name = String.valueOf(input.getText()).trim();
+                    if (name.isEmpty()) {
+                        Toast.makeText(getContext(), R.string.settings_connection_presets_invalid_name, Toast.LENGTH_LONG).show();
+                        return;
+                    }
+
+                    ConnectionPresets.upsert(requireActivity(), ConnectionPresets.fromCurrentSettings(requireActivity(), name));
+                    Toast.makeText(getContext(), R.string.settings_connection_presets_saved_toast, Toast.LENGTH_LONG).show();
+                })
+                .setNegativeButton(R.string.button_cancel, null)
+                .show();
+    }
+
+    private void showPresetActionsDialog(ConnectionPresets.Preset preset) {
+        if (getActivity() == null) {
+            return;
+        }
+
+        new AlertDialog.Builder(requireActivity())
+                .setTitle(preset.name)
+                .setPositiveButton(R.string.settings_connection_presets_apply, (dialog, which) -> {
+                    Runnable apply = () -> {
+                        ConnectionPresets.applyToSettings(requireActivity(), preset);
+                        Toast.makeText(getContext(), R.string.settings_connection_presets_applied_toast, Toast.LENGTH_LONG).show();
+                    };
+
+                    if (isLockActiveAndLocked()) {
+                        promptUnlockThen(apply);
+                    } else {
+                        apply.run();
+                    }
+                })
+                .setNeutralButton(R.string.settings_connection_presets_delete, (dialog, which) -> {
+                    boolean removed = ConnectionPresets.delete(requireActivity(), preset.name);
+                    if (removed) {
+                        Toast.makeText(getContext(), R.string.settings_connection_presets_deleted_toast, Toast.LENGTH_LONG).show();
+                    }
+                })
+                .setNegativeButton(R.string.button_cancel, null)
+                .show();
+    }
+
+    private void applyLockedBehavior(boolean lockEnabled) {
+        final androidx.fragment.app.FragmentActivity activity = getActivity();
+        if (activity == null) {
+            return;
+        }
+
+        final boolean locked = lockEnabled && SettingsLock.isPinSet(activity) && !mSettingsUnlocked;
+
+        // These are the settings most likely to be abused in the field.
+        setSensitivePrefLocked("host", locked);
+        setSensitivePrefLocked("port", locked);
+        setSensitivePrefLocked("session", locked);
+        setSensitivePrefLocked("tls", locked);
+        setSensitivePrefLocked("tls_pinning", locked);
+        setSensitivePrefLocked("tls_pinning_mode", locked);
+        setSensitivePrefLocked("tls_pinning_spki_sha256", locked);
+    }
+
+    private void setSensitivePrefLocked(String key, boolean locked) {
+        final Preference pref = findPreference(key);
+        if (pref == null) {
+            return;
+        }
+
+        if (!mOriginalSummaries.containsKey(key)) {
+            mOriginalSummaries.put(key, pref.getSummary());
+        }
+        if (!mOriginalSummaryProviders.containsKey(key)) {
+            mOriginalSummaryProviders.put(key, pref.getSummaryProvider());
+        }
+
+        if (locked) {
+            // If a SummaryProvider is set, calling setSummary() can crash (AndroidX throws).
+            pref.setSummaryProvider(p -> getString(R.string.settings_lock_locked_summary));
+        } else {
+            // Restore original SummaryProvider if there was one.
+            Preference.SummaryProvider<?> originalProvider = mOriginalSummaryProviders.get(key);
+            if (originalProvider != null) {
+                //noinspection unchecked
+                pref.setSummaryProvider((Preference.SummaryProvider<Preference>) originalProvider);
+            } else {
+                // Restore original summary (from XML or previously-set value).
+                CharSequence original = mOriginalSummaries.get(key);
+                pref.setSummary(original);
+
+                // For list prefs, prefer the active selection as summary.
+                if (pref instanceof ListPreference) {
+                    ((ListPreference) pref).setSummaryProvider(ListPreference.SimpleSummaryProvider.getInstance());
+                }
+            }
+        }
+    }
+
+    private boolean isLockActiveAndLocked() {
+        final androidx.fragment.app.FragmentActivity activity = getActivity();
+        return activity != null
+            && SettingsLock.isEnabled(activity)
+            && SettingsLock.isPinSet(activity)
+                && !mSettingsUnlocked;
+    }
+
+    private void guardSensitivePreferenceClick(String key) {
+        final Preference pref = findPreference(key);
+        if (pref == null) {
+            return;
+        }
+        pref.setOnPreferenceClickListener(p -> {
+            if (!isLockActiveAndLocked()) {
+                return false; // allow default behavior
+            }
+            promptUnlockThen(() -> {
+                // After unlocking, proceed with the original click.
+                try {
+                    p.performClick();
+                } catch (Exception ignored) {
+                    // no-op
+                }
+            });
+            return true;
+        });
+    }
+
+    private void guardSensitivePreferenceChange(String key) {
+        final Preference pref = findPreference(key);
+        if (pref == null) {
+            return;
+        }
+
+        pref.setOnPreferenceChangeListener((p, newValue) -> {
+            if (!isLockActiveAndLocked()) {
+                return true;
+            }
+            promptUnlockThen(() -> {
+                if (mPrefs == null) {
+                    return;
+                }
+
+                // Apply the change manually after unlock.
+                if (p instanceof CheckBoxPreference) {
+                    boolean v = Boolean.TRUE.equals(newValue);
+                    mPrefs.edit().putBoolean(p.getKey(), v).apply();
+                    ((CheckBoxPreference) p).setChecked(v);
+                } else if (newValue instanceof String) {
+                    mPrefs.edit().putString(p.getKey(), (String) newValue).apply();
+                }
+            });
+            return false;
+        });
+    }
+
+    private void promptUnlockThen(Runnable onUnlocked) {
+        final androidx.fragment.app.FragmentActivity activity = getActivity();
+        if (activity == null) {
+            return;
+        }
+        if (!SettingsLock.isPinSet(activity)) {
+            Toast.makeText(getContext(), R.string.settings_lock_pin_not_set, Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        final EditText pinInput = new EditText(activity);
+        pinInput.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
+        pinInput.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        int pad = (int) (16 * getResources().getDisplayMetrics().density);
+        LinearLayout wrapper = new LinearLayout(activity);
+        wrapper.setOrientation(LinearLayout.VERTICAL);
+        wrapper.setPadding(pad, pad / 2, pad, 0);
+        wrapper.addView(pinInput);
+
+        new AlertDialog.Builder(activity)
+                .setTitle(R.string.settings_lock_unlock_title)
+                .setView(wrapper)
+                .setPositiveButton(R.string.button_ok, (dialog, which) -> {
+                    String pin = String.valueOf(pinInput.getText()).trim();
+                    if (SettingsLock.verifyPin(activity, pin)) {
+                        mSettingsUnlocked = true;
+                        applyLockedBehavior(SettingsLock.isEnabled(activity));
+                        if (onUnlocked != null) {
+                            onUnlocked.run();
+                        }
+                    } else {
+                        Toast.makeText(getContext(), R.string.settings_lock_wrong_pin, Toast.LENGTH_LONG).show();
+                    }
+                })
+                .setNegativeButton(R.string.button_cancel, null)
+                .show();
+    }
+
+    private void promptSetNewPin() {
+        promptSetNewPin(null, null);
+    }
+
+    private void promptSetNewPin(Runnable onSuccess, Runnable onCancel) {
+        final androidx.fragment.app.FragmentActivity activity = getActivity();
+        if (activity == null) {
+            return;
+        }
+
+        final EditText pin1 = new EditText(activity);
+        pin1.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
+
+        final EditText pin2 = new EditText(activity);
+        pin2.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
+
+        int pad = (int) (16 * getResources().getDisplayMetrics().density);
+        LinearLayout wrapper = new LinearLayout(activity);
+        wrapper.setOrientation(LinearLayout.VERTICAL);
+        wrapper.setPadding(pad, pad / 2, pad, 0);
+
+        pin1.setHint(getString(R.string.settings_lock_pin_hint));
+        pin2.setHint(getString(R.string.settings_lock_pin_confirm_hint));
+        wrapper.addView(pin1);
+        wrapper.addView(pin2);
+
+        new AlertDialog.Builder(activity)
+                .setTitle(R.string.settings_lock_set_pin_title)
+                .setView(wrapper)
+                .setPositiveButton(R.string.button_ok, (dialog, which) -> {
+                    String a = String.valueOf(pin1.getText()).trim();
+                    String b = String.valueOf(pin2.getText()).trim();
+                    if (a.length() < 4) {
+                        Toast.makeText(getContext(), R.string.settings_lock_pin_too_short, Toast.LENGTH_LONG).show();
+                        if (onCancel != null) {
+                            onCancel.run();
+                        }
+                        return;
+                    }
+                    if (!a.equals(b)) {
+                        Toast.makeText(getContext(), R.string.settings_lock_pin_mismatch, Toast.LENGTH_LONG).show();
+                        if (onCancel != null) {
+                            onCancel.run();
+                        }
+                        return;
+                    }
+
+                    SettingsLock.setPin(activity, a);
+                    Toast.makeText(getContext(), R.string.settings_lock_pin_set_toast, Toast.LENGTH_LONG).show();
+                    if (onSuccess != null) {
+                        onSuccess.run();
+                    }
+                })
+                .setNegativeButton(R.string.button_cancel, (dialog, which) -> {
+                    if (onCancel != null) {
+                        onCancel.run();
+                    }
+                })
+                .show();
     }
 
     private void setupAdvancedAccordion() {

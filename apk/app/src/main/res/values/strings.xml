@@ -44,6 +44,7 @@
     <string name="network_privacy_status_paused">Paused</string>
     <string name="network_privacy_status_attention">Action needed</string>
     <string name="network_tls_error">Network: TLS error</string>
+    <string name="network_tls_error_hint_plain">Network: TLS error. TLS is enabled in settings — if your server does not use TLS, disable TLS (or use the correct TLS port).</string>
     <string name="network_tls_unknown">Network: Certificate unknown</string>
     <string name="network_tls_untrusted">Network: Certificate untrusted</string>
 
@@ -72,6 +73,15 @@
     <string name="relay_action">Emulate</string>
     <string name="relay_refresh">Refresh</string>
     <string name="relay_stop_lock">Stop &amp; lock</string>
+    <string name="relay_panic">Panic (hide details)</string>
+    <string name="relay_reconnect">Reconnect</string>
+    <string name="relay_apply_recent">Apply last connection</string>
+    <string name="relay_apply_recent_empty">No recent connections yet.</string>
+    <string name="relay_apply_recent_toast">Applied. Reconnecting…</string>
+    <string name="relay_pause_sending">Pause sending</string>
+    <string name="relay_resume_sending">Resume sending</string>
+    <string name="relay_pause_sending_toast">Sending paused</string>
+    <string name="relay_resume_sending_toast">Sending resumed</string>
 
     <string name="replay_action">Replay</string>
     <string name="replay_session">Session %1$d</string>
@@ -86,6 +96,25 @@
     <string name="status_no">No</string>
     <string name="status_copy">Copy config</string>
     <string name="status_export">Export config</string>
+    <string name="status_selftest">Self-test connection</string>
+    <string name="status_selftest_title">Connection self-test</string>
+    <string name="status_selftest_running">Testing…</string>
+    <string name="status_selftest_result_ok">Result: OK</string>
+    <string name="status_selftest_result_fail">Result: FAILED</string>
+    <string name="status_selftest_kv_host">Host: %1$s</string>
+    <string name="status_selftest_kv_port">Port: %1$d</string>
+    <string name="status_selftest_kv_tls">TLS: %1$s</string>
+    <string name="status_selftest_kv_pinning">Pinning: %1$s</string>
+    <string name="status_selftest_kv_error">Error: %1$s</string>
+
+    <string name="status_selftest_error_bad_host_port">Invalid host/port in settings.</string>
+    <string name="status_selftest_error_bad_port">Invalid port in settings.</string>
+    <string name="status_selftest_error_tls">TLS handshake failed.</string>
+    <string name="status_selftest_error_tls_unknown_cert">TLS: certificate is unknown. Open Relay mode to review and trust it.</string>
+    <string name="status_selftest_error_tls_untrusted_cert">TLS: certificate is blocked/untrusted.</string>
+    <string name="status_selftest_error_unknown_host">Unknown host.</string>
+    <string name="status_selftest_error_timeout">Connection timed out.</string>
+    <string name="status_selftest_error_refused">Connection refused.</string>
     <string name="status_devname">Device Name</string>
     <string name="status_version">Android Version</string>
     <string name="status_version_text">%1$s %2$s (%3$d)</string>
@@ -96,6 +125,13 @@
     <string name="status_hook">Native Hook Enabled</string>
     <string name="status_chip">NFC Chip</string>
     <string name="status_unknown">Unknown</string>
+
+    <string name="status_diag_dropped_sends">Dropped outgoing messages</string>
+    <string name="status_diag_dropped_logs">Dropped log entries</string>
+    <string name="status_diag_watchdog_reconnects">Watchdog reconnects</string>
+    <string name="status_diag_dropped_sends_warn">Some outgoing messages were dropped (send queue was full).</string>
+    <string name="status_diag_dropped_logs_warn">Some log entries were dropped (log queue/rate limit).</string>
+    <string name="status_diag_watchdog_reconnects_warn">Connection watchdog triggered reconnection at least once.</string>
 
     <string name="pcap_success">Pcap import success</string>
     <string name="pcap_error">Pcap import error</string>
@@ -111,6 +147,8 @@
     <string name="log_share">Share</string>
     <string name="log_error_multiple">Cannot share multiple logs</string>
     <string name="logging_no_sessions">No sessions found</string>
+    <string name="log_export_recent">Export last N seconds</string>
+    <string name="log_export_recent_empty">No recent log entries found in that time window.</string>
 
     <string name="network_reader">Reader</string>
     <string name="network_tag">Tag</string>
@@ -154,6 +192,48 @@
     <string name="settings_neutral_mode">Neutral mode</string>
     <string name="settings_neutral_mode_summary">Show simple, non-technical messages on the privacy screen</string>
 
+    <string name="settings_privacy_style">Privacy screen style</string>
+    <string name="settings_privacy_style_summary">Choose how the privacy screen looks</string>
+
+    <string name="settings_privacy_auto_timeout">Auto-hide details (seconds)</string>
+    <string name="settings_privacy_auto_timeout_summary">After revealing details, hide them again automatically (0 disables)</string>
+    <string name="settings_privacy_auto_timeout_dialog">Enter seconds (e.g., 30). Use 0 to disable.</string>
+
+    <string name="settings_lock_enabled">Lock sensitive settings</string>
+    <string name="settings_lock_enabled_summary">Require a PIN to change host/port/TLS/pinning</string>
+    <string name="settings_lock_change_pin">Change PIN</string>
+    <string name="settings_lock_change_pin_summary">Set or change the PIN used to unlock settings</string>
+
+    <string name="settings_lock_unlock_title">Unlock settings</string>
+    <string name="settings_lock_set_pin_title">Set PIN</string>
+    <string name="settings_lock_pin_hint">Enter PIN (min 4 digits)</string>
+    <string name="settings_lock_pin_confirm_hint">Confirm PIN</string>
+    <string name="settings_lock_wrong_pin">Wrong PIN</string>
+    <string name="settings_lock_pin_mismatch">PINs do not match</string>
+    <string name="settings_lock_pin_too_short">PIN is too short (min 4 digits)</string>
+    <string name="settings_lock_pin_set_toast">PIN saved</string>
+    <string name="settings_lock_pin_not_set">PIN is not set</string>
+    <string name="settings_lock_locked_summary">Locked. Tap to unlock.</string>
+
+    <string name="settings_connection_presets">Connection presets</string>
+    <string name="settings_connection_presets_summary">Save and quickly apply host/port/session/TLS settings</string>
+    <string name="settings_connection_presets_empty">No presets saved yet.</string>
+    <string name="settings_connection_presets_save_current">Save current</string>
+    <string name="settings_connection_presets_name_hint">Preset name</string>
+    <string name="settings_connection_presets_invalid_name">Enter a preset name</string>
+    <string name="settings_connection_presets_saved_toast">Preset saved</string>
+    <string name="settings_connection_presets_applied_toast">Preset applied. Reconnect for changes to take effect.</string>
+    <string name="settings_connection_presets_deleted_toast">Preset deleted</string>
+    <string name="settings_connection_presets_apply">Apply</string>
+    <string name="settings_connection_presets_delete">Delete</string>
+
+    <string name="settings_connection_recents">Recent connections</string>
+    <string name="settings_connection_recents_empty">No recent connections yet.</string>
+    <string name="settings_connection_recents_clear">Clear</string>
+    <string name="settings_connection_recents_cleared_toast">Recent connections cleared</string>
+    <string name="settings_connection_recents_applied_toast">Connection applied. Reconnect for changes to take effect.</string>
+    <string name="settings_connection_recents_deleted_toast">Recent connection deleted</string>
+
     <string name="settings_watchdog">Connection watchdog</string>
     <string name="settings_watchdog_summary">Reconnect automatically if the connection appears stuck</string>
     <string name="settings_watchdog_timeout">Watchdog timeout (seconds)</string>
@@ -173,6 +253,10 @@
 
     <string name="settings_share_diagnostics">Share diagnostics</string>
     <string name="settings_share_diagnostics_summary">Exports basic app/device info and current settings as a text file</string>
+
+    <string name="settings_export_last_seconds">Export window (seconds)</string>
+    <string name="settings_export_last_seconds_summary">Used by “Export last N seconds” on the Logging screen</string>
+    <string name="settings_export_last_seconds_dialog">Enter seconds (e.g., 30).</string>
 
     <string name="settings_send_queue_capacity">Send queue size</string>
     <string name="settings_send_queue_capacity_summary">Maximum pending outgoing messages (applies after reconnect)</string>
@@ -278,5 +362,14 @@
     <string-array name="pinning_mode_values">
         <item>normal_ca</item>
         <item>strict_pinning</item>
+    </string-array>
+
+    <string-array name="privacy_style_names">
+        <item>Text</item>
+        <item>Matrix</item>
+    </string-array>
+    <string-array name="privacy_style_values">
+        <item>text</item>
+        <item>matrix</item>
     </string-array>
 </resources>

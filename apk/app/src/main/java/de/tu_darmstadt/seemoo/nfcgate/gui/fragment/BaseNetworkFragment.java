@@ -10,6 +10,9 @@ import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.InputType;
 import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -21,19 +24,38 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.AccelerateDecelerateInterpolator;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.appcompat.app.AlertDialog;
+
+import java.util.List;
 
 import de.tu_darmstadt.seemoo.nfcgate.R;
 import de.tu_darmstadt.seemoo.nfcgate.db.worker.LogInserter;
+import de.tu_darmstadt.seemoo.nfcgate.gui.component.MatrixRainView;
 import de.tu_darmstadt.seemoo.nfcgate.gui.component.StatusBanner;
 import de.tu_darmstadt.seemoo.nfcgate.gui.dialog.CertificateTrustDialogFragment;
 import de.tu_darmstadt.seemoo.nfcgate.gui.log.SessionLogEntryFragment;
 import de.tu_darmstadt.seemoo.nfcgate.network.data.NetworkStatus;
+import de.tu_darmstadt.seemoo.nfcgate.util.ConnectionPresets;
+import de.tu_darmstadt.seemoo.nfcgate.util.SettingsLock;
 
 public abstract class BaseNetworkFragment extends BaseFragment implements LogInserter.SIDChangedListener {
     private static final String TAG = "BaseNetworkFragment";
+
+    private NetworkStatus mLastNetworkStatus = null;
+
+    private boolean canTouchUi() {
+        // Do NOT require getView() here: during onCreateView()/reset() it can be null while view refs are already available.
+        return isAdded() && getActivity() != null && getContext() != null;
+    }
+
+    private final Handler mPrivacyHandler = new Handler(Looper.getMainLooper());
+    private final Runnable mPrivacyAutoTimeoutRunnable = this::hideSensitiveContent;
 
     // UI references
     View mTagWaiting;
@@ -45,8 +67,12 @@ public abstract class BaseNetworkFragment extends BaseFragment implements LogIns
     TextView mPrivacySubtitle;
     View mPrivacyToggle;
 
+    View mPrivacyContent;
+
     ImageView mPrivacyStateIcon;
     View mPrivacyPulse;
+
+    MatrixRainView mMatrixRain;
 
     private AnimatorSet mPrivacyAnimator;
 
@@ -68,12 +94,15 @@ public abstract class BaseNetworkFragment extends BaseFragment implements LogIns
         mPrivacySubtitle = v.findViewById(R.id.txt_privacy_subtitle);
         mPrivacyToggle = v.findViewById(R.id.btn_privacy_toggle);
 
+        mPrivacyContent = v.findViewById(R.id.lay_privacy_content);
+
         mPrivacyStateIcon = v.findViewById(R.id.img_privacy_state);
         mPrivacyPulse = v.findViewById(R.id.prg_privacy_pulse);
+        mMatrixRain = v.findViewById(R.id.matrix_rain);
 
         // Tap overlay to reveal logs/details; toggle button brings the overlay back.
-        mPrivacyOverlay.setOnClickListener(view -> setPrivacyOverlayVisible(false));
-        mPrivacyToggle.setOnClickListener(view -> setPrivacyOverlayVisible(true));
+        mPrivacyOverlay.setOnClickListener(view -> revealSensitiveContent());
+        mPrivacyToggle.setOnClickListener(view -> hideSensitiveContent());
 
         // selector setup
         v.<LinearLayout>findViewById(R.id.select_reader).setOnClickListener(view -> onSelect(true));
@@ -82,6 +111,58 @@ public abstract class BaseNetworkFragment extends BaseFragment implements LogIns
         setHasOptionsMenu(true);
         reset();
         return v;
+    }
+
+    private int getPrivacyAutoTimeoutSec() {
+        if (getActivity() == null) {
+            return 0;
+        }
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        String raw = prefs.getString("privacy_auto_timeout_sec", "30");
+        int value;
+        try {
+            value = Integer.parseInt(raw);
+        } catch (Exception ignored) {
+            value = 30;
+        }
+        // 0 disables; clamp to a sane upper bound.
+        if (value < 0) {
+            value = 0;
+        } else if (value > 3600) {
+            value = 3600;
+        }
+        return value;
+    }
+
+    private void schedulePrivacyAutoTimeout() {
+        cancelPrivacyAutoTimeout();
+        int sec = getPrivacyAutoTimeoutSec();
+        if (sec <= 0) {
+            return;
+        }
+        mPrivacyHandler.postDelayed(mPrivacyAutoTimeoutRunnable, sec * 1000L);
+    }
+
+    private void cancelPrivacyAutoTimeout() {
+        mPrivacyHandler.removeCallbacks(mPrivacyAutoTimeoutRunnable);
+    }
+
+    private void revealSensitiveContent() {
+        setPrivacyOverlayVisible(false);
+        schedulePrivacyAutoTimeout();
+    }
+
+    private void hideSensitiveContent() {
+        cancelPrivacyAutoTimeout();
+        setPrivacyOverlayVisible(true);
+    }
+
+    private boolean isTlsEnabledInSettings() {
+        if (getActivity() == null) {
+            return false;
+        }
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        return prefs.getBoolean("tls", false);
     }
 
     private void setPrivacyOverlayVisible(boolean visible) {
@@ -99,6 +180,9 @@ public abstract class BaseNetworkFragment extends BaseFragment implements LogIns
     }
 
     private String neutralBannerMessageForStatus(NetworkStatus status) {
+        if (!canTouchUi()) {
+            return "";
+        }
         switch (status) {
             case CONNECTING:
                 return getString(R.string.network_privacy_status_connecting);
@@ -119,6 +203,9 @@ public abstract class BaseNetworkFragment extends BaseFragment implements LogIns
     }
 
     private void setPrivacySubtitle(int resId) {
+        if (!canTouchUi()) {
+            return;
+        }
         if (mPrivacySubtitle != null) {
             mPrivacySubtitle.setText(getString(resId));
         }
@@ -142,10 +229,38 @@ public abstract class BaseNetworkFragment extends BaseFragment implements LogIns
         final boolean overlayVisible = isPrivacyOverlayVisible();
         final boolean pulseVisible = mPrivacyPulse != null && mPrivacyPulse.getVisibility() == View.VISIBLE;
 
+        applyPrivacyStyle(overlayVisible);
+
+        // Matrix mode: no icon/spinner/text, so also disable the pulse animation.
+        if (overlayVisible && isPrivacyStyleMatrixEnabled()) {
+            stopPrivacyAnimation();
+            return;
+        }
+
         if (overlayVisible && pulseVisible) {
             startPrivacyAnimation();
         } else {
             stopPrivacyAnimation();
+        }
+    }
+
+    private boolean isPrivacyStyleMatrixEnabled() {
+        if (getActivity() == null)
+            return false;
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        return "matrix".equals(prefs.getString("privacy_style", "text"));
+    }
+
+    private void applyPrivacyStyle(boolean overlayVisible) {
+        if (mMatrixRain == null)
+            return;
+
+        final boolean matrix = isPrivacyStyleMatrixEnabled();
+        mMatrixRain.setVisibility(matrix ? View.VISIBLE : View.GONE);
+        mMatrixRain.setRunning(matrix && overlayVisible);
+
+        if (mPrivacyContent != null) {
+            mPrivacyContent.setVisibility(matrix ? View.GONE : View.VISIBLE);
         }
     }
 
@@ -225,6 +340,9 @@ public abstract class BaseNetworkFragment extends BaseFragment implements LogIns
     }
 
     protected void stopAndLock() {
+        if (!canTouchUi()) {
+            return;
+        }
         // Defensive: users can trigger this while the fragment/activity is in a transient state.
         // Never crash the app; best-effort stop the mode and show privacy overlay.
         try {
@@ -247,6 +365,9 @@ public abstract class BaseNetworkFragment extends BaseFragment implements LogIns
     }
 
     private void updatePrivacySubtitleForStatus(NetworkStatus status) {
+        if (!canTouchUi()) {
+            return;
+        }
         if (!isNeutralModeEnabled()) {
             // Keep technical status strings.
             switch (status) {
@@ -305,6 +426,21 @@ public abstract class BaseNetworkFragment extends BaseFragment implements LogIns
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         inflater.inflate(R.menu.toolbar_relay, menu);
+
+        try {
+            MenuItem pause = menu.findItem(R.id.action_pause_sending);
+            if (pause != null) {
+                boolean paused = getNfc().getNetwork().isPausedSending();
+                pause.setChecked(paused);
+                pause.setTitle(paused ? R.string.relay_resume_sending : R.string.relay_pause_sending);
+
+                // Keep the privacy overlay consistent if the menu is recreated.
+                applyPausedOverlayState(paused);
+            }
+        } catch (Exception ignored) {
+            // best-effort
+        }
+
         super.onCreateOptionsMenu(menu, inflater);
     }
 
@@ -318,16 +454,193 @@ public abstract class BaseNetworkFragment extends BaseFragment implements LogIns
             reset();
             return true;
         }
+        if (item.getItemId() == R.id.action_panic) {
+            hideSensitiveContent();
+            return true;
+        }
+        if (item.getItemId() == R.id.action_reconnect) {
+            if (!checkNetwork()) {
+                return true;
+            }
+            try {
+                getNfc().getNetwork().reconnectNow();
+            } catch (Exception e) {
+                Log.w(TAG, "Manual reconnect failed", e);
+            }
+            return true;
+        }
+        if (item.getItemId() == R.id.action_pause_sending) {
+            if (getActivity() == null) {
+                return true;
+            }
+
+            boolean currentlyPaused;
+            try {
+                currentlyPaused = getNfc().getNetwork().isPausedSending();
+            } catch (Exception e) {
+                Log.w(TAG, "Pause state read failed", e);
+                return true;
+            }
+
+            final boolean targetPaused = !currentlyPaused;
+            Runnable apply = () -> {
+                try {
+                    getNfc().getNetwork().setPausedSending(targetPaused);
+                    item.setChecked(targetPaused);
+                    item.setTitle(targetPaused ? R.string.relay_resume_sending : R.string.relay_pause_sending);
+
+                    // Reflect pause in privacy overlay (subtitle/icon) immediately.
+                    applyPausedOverlayState(targetPaused);
+
+                    // Keep UI understandable even in neutral mode.
+                    if (targetPaused) {
+                        mStatusBanner.setWarning(getString(R.string.network_privacy_status_paused));
+                    } else {
+                        // Restore visuals from last known network state.
+                        if (mLastNetworkStatus != null) {
+                            try {
+                                handleStatus(mLastNetworkStatus);
+                            } catch (Exception ignored) {
+                                // no-op
+                            }
+                        } else {
+                            mStatusBanner.setVisibility(false);
+                        }
+                    }
+
+                    Toast.makeText(getContext(), targetPaused ? R.string.relay_pause_sending_toast : R.string.relay_resume_sending_toast, Toast.LENGTH_LONG).show();
+                } catch (Exception e) {
+                    Log.w(TAG, "Pause toggle failed", e);
+                }
+            };
+
+            if (SettingsLock.isEnabled(requireActivity()) && SettingsLock.isPinSet(requireActivity())) {
+                promptPinThen(apply);
+            } else {
+                apply.run();
+            }
+            return true;
+        }
+        if (item.getItemId() == R.id.action_apply_recent) {
+            if (getActivity() == null) {
+                return true;
+            }
+
+            Runnable apply = this::applyLastRecentAndReconnect;
+            if (SettingsLock.isEnabled(requireActivity()) && SettingsLock.isPinSet(requireActivity())) {
+                promptPinThen(apply);
+            } else {
+                apply.run();
+            }
+            return true;
+        }
         return super.onOptionsItemSelected(item);
+    }
+
+    private boolean isPausedSendingSafe() {
+        try {
+            return getActivity() != null && getNfc() != null && getNfc().getNetwork() != null && getNfc().getNetwork().isPausedSending();
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private void applyPausedOverlayState(boolean paused) {
+        if (!canTouchUi()) {
+            return;
+        }
+        if (!isPrivacyOverlayVisible()) {
+            return;
+        }
+
+        if (paused) {
+            setPrivacySubtitle(R.string.network_privacy_status_paused);
+            setPrivacyStateIcon(R.drawable.ic_stop_grey_60dp);
+            setPrivacyPulseVisible(false);
+        } else {
+            if (mLastNetworkStatus != null) {
+                updatePrivacySubtitleForStatus(mLastNetworkStatus);
+                updatePrivacyVisualsForStatus(mLastNetworkStatus);
+            }
+        }
+    }
+
+    private void applyLastRecentAndReconnect() {
+        if (getActivity() == null) {
+            return;
+        }
+
+        final List<ConnectionPresets.Recent> recents = ConnectionPresets.loadRecents(requireActivity());
+        if (recents.isEmpty() || recents.get(0) == null) {
+            Toast.makeText(getContext(), R.string.relay_apply_recent_empty, Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        ConnectionPresets.applyToSettings(requireActivity(), recents.get(0));
+
+        if (!checkNetwork()) {
+            return;
+        }
+
+        try {
+            getNfc().getNetwork().reconnectNow();
+            Toast.makeText(getContext(), R.string.relay_apply_recent_toast, Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Log.w(TAG, "Apply recent + reconnect failed", e);
+        }
+    }
+
+    private void promptPinThen(Runnable onVerified) {
+        if (getActivity() == null) {
+            return;
+        }
+        if (!SettingsLock.isPinSet(requireActivity())) {
+            Toast.makeText(getContext(), R.string.settings_lock_pin_not_set, Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        final EditText pinInput = new EditText(requireActivity());
+        pinInput.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
+
+        int pad = (int) (16 * getResources().getDisplayMetrics().density);
+        LinearLayout wrapper = new LinearLayout(requireActivity());
+        wrapper.setOrientation(LinearLayout.VERTICAL);
+        wrapper.setPadding(pad, pad / 2, pad, 0);
+        wrapper.addView(pinInput);
+
+        new AlertDialog.Builder(requireActivity())
+                .setTitle(R.string.settings_lock_unlock_title)
+                .setView(wrapper)
+                .setPositiveButton(R.string.button_ok, (dialog, which) -> {
+                    String pin = String.valueOf(pinInput.getText()).trim();
+                    if (SettingsLock.verifyPin(requireActivity(), pin)) {
+                        if (onVerified != null) {
+                            onVerified.run();
+                        }
+                    } else {
+                        Toast.makeText(getContext(), R.string.settings_lock_wrong_pin, Toast.LENGTH_LONG).show();
+                    }
+                })
+                .setNegativeButton(R.string.button_cancel, null)
+                .show();
     }
 
     @Override
     public void onSIDChanged(long sessionID) {
+        if (!canTouchUi()) {
+            return;
+        }
+
+        // Avoid fragment transactions after state is saved (can happen during navigation).
+        if (getMainActivity() == null || getMainActivity().isFinishing() || getMainActivity().getSupportFragmentManager().isStateSaved()) {
+            return;
+        }
+
         // first, close old fragment if exists
         if (mLogFragment != null) {
             getMainActivity().getSupportFragmentManager().beginTransaction()
                     .remove(mLogFragment)
-                    .commit();
+                    .commitAllowingStateLoss();
         }
 
         // if new session exists, show log fragment
@@ -335,27 +648,50 @@ public abstract class BaseNetworkFragment extends BaseFragment implements LogIns
             mLogFragment = SessionLogEntryFragment.newInstance(sessionID, SessionLogEntryFragment.Type.LIVE, null);
             getMainActivity().getSupportFragmentManager().beginTransaction()
                     .replace(R.id.lay_content, mLogFragment)
-                    .commit();
+                    .commitAllowingStateLoss();
 
             // Hide technical details by default while an active session is running.
-            setPrivacyOverlayVisible(true);
+            hideSensitiveContent();
             setPrivacySubtitle(R.string.network_privacy_subtitle);
         } else {
+            cancelPrivacyAutoTimeout();
             setPrivacyOverlayVisible(false);
         }
     }
 
     protected void setSelectorVisible(boolean visible) {
+        if (!canTouchUi() || mSelector == null) {
+            return;
+        }
         mSelector.setVisibility(visible ? View.VISIBLE : View.GONE);
     }
 
     protected void setTagWaitVisible(boolean visible, boolean reader) {
+        if (!canTouchUi() || mTagWaitingText == null || mTagWaiting == null) {
+            return;
+        }
         mTagWaitingText.setText(getString(R.string.network_waiting_for,
                 getString(reader ? R.string.network_reader : R.string.network_tag)));
         mTagWaiting.setVisibility(visible ? View.VISIBLE : View.GONE);
     }
 
     protected void handleStatus(NetworkStatus status) {
+        if (!canTouchUi()) {
+            return;
+        }
+
+        mLastNetworkStatus = status;
+
+        // If sending is paused, keep the privacy overlay in a consistent paused state.
+        if (isPausedSendingSafe()) {
+            setPrivacySubtitle(R.string.network_privacy_status_paused);
+            setPrivacyStateIcon(R.drawable.ic_stop_grey_60dp);
+            setPrivacyPulseVisible(false);
+            // Banner should still be visible to avoid confusion when overlay is hidden.
+            mStatusBanner.setWarning(getString(R.string.network_privacy_status_paused));
+            return;
+        }
+
         final boolean neutralUi = isNeutralModeEnabled() && isPrivacyOverlayVisible();
         final String neutralMsg = neutralUi ? neutralBannerMessageForStatus(status) : null;
 
@@ -366,7 +702,11 @@ public abstract class BaseNetworkFragment extends BaseFragment implements LogIns
                 updatePrivacyVisualsForStatus(status);
                 break;
             case ERROR_TLS:
-                mStatusBanner.setError(neutralUi ? neutralMsg : getString(R.string.network_tls_error));
+                if (!neutralUi && isTlsEnabledInSettings()) {
+                    mStatusBanner.setError(getString(R.string.network_tls_error_hint_plain));
+                } else {
+                    mStatusBanner.setError(neutralUi ? neutralMsg : getString(R.string.network_tls_error));
+                }
                 updatePrivacySubtitleForStatus(status);
                 updatePrivacyVisualsForStatus(status);
                 break;
@@ -465,6 +805,7 @@ public abstract class BaseNetworkFragment extends BaseFragment implements LogIns
             }
         }
 
+        cancelPrivacyAutoTimeout();
         setPrivacyOverlayVisible(false);
         setPrivacySubtitle(R.string.network_privacy_subtitle);
         setPrivacyStateIcon(R.drawable.ic_nfc_grey_42dp);
@@ -482,7 +823,11 @@ public abstract class BaseNetworkFragment extends BaseFragment implements LogIns
 
     @Override
     public void onPause() {
+        cancelPrivacyAutoTimeout();
         stopPrivacyAnimation();
+        if (mMatrixRain != null) {
+            mMatrixRain.setRunning(false);
+        }
         super.onPause();
     }
 

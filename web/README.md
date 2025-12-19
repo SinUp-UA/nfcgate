@@ -4,6 +4,16 @@ This folder contains the React (Vite) admin UI for the NFCGate relay server.
 
 In Docker, the UI is served as static files by Nginx and proxies `/api/*` requests to the server's internal admin HTTP API.
 
+## Features
+
+- **Real-time Log Tailing**: View latest events with configurable limit (default 100) and auto-refresh
+- **Advanced Filtering**: Filter logs by tag, origin (client/server), and session
+- **Log Export**: Export historical logs in JSONL or CSV format with date range selection
+- **APDU Statistics**: Analyze APDU command frequency and patterns over time
+- **Multi-admin Support**: Create and manage multiple admin accounts
+- **Session-based Analysis**: Filter all views by TCP relay session ID
+- **Secure by Default**: Two-layer protection (Nginx Basic Auth + application-level auth)
+
 ## Run (recommended)
 
 From repo root:
@@ -47,8 +57,30 @@ Because Nginx Basic Auth uses the `Authorization: Basic ...` header, the panel s
 
 The panel supports filtering log export, APDU stats and tail by the TCP relay `session`.
 
-- Use the `Session` input to restrict queries to a specific session.
-- Tail output includes the `session` column.
+- Use the `Session` input to restrict queries to a specific session (1-99)
+- Tail output includes the `session` column for easy identification
+- Helps isolate traffic when multiple device pairs are connected simultaneously
+- Session is determined by the Android app settings (default: 1)
+
+## UI Features
+
+### Latest Events (Tail)
+- Configurable row limit (default 100, max 10000)
+- Real-time polling toggle (auto-refresh every 5 seconds)
+- Filter by tag, origin, and session
+- Click rows to expand and view full payload hex dump
+
+### Log Export
+- Select date/time range (ISO 8601 format or date picker)
+- Choose format: JSONL (structured) or CSV (spreadsheet-friendly)
+- Apply same filters as tail view
+- Downloads directly to browser
+
+### APDU Stats
+- Frequency analysis of APDU commands over time range
+- Top N commands (configurable)
+- Filterable by tag, origin, session
+- Useful for protocol reverse engineering
 
 ## Local development
 

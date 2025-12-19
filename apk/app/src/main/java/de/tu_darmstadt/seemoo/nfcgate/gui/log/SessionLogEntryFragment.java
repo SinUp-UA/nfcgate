@@ -3,12 +3,15 @@ package de.tu_darmstadt.seemoo.nfcgate.gui.log;
 import androidx.lifecycle.ViewModelProviders;
 import android.content.Context;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.preference.PreferenceManager;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -35,6 +38,9 @@ import de.tu_darmstadt.seemoo.nfcgate.util.NfcComm;
 import static de.tu_darmstadt.seemoo.nfcgate.util.Utils.bytesToHexDump;
 
 public class SessionLogEntryFragment extends Fragment {
+    private final Handler mPrivacyHandler = new Handler(Looper.getMainLooper());
+    private final Runnable mPrivacyAutoTimeoutRunnable = () -> setPrivacyOverlayVisible(true);
+
     public enum Type {
         // look at a prerecorded log
         VIEW,
@@ -90,8 +96,8 @@ public class SessionLogEntryFragment extends Fragment {
 
         if (mPrivacyOverlay != null && mPrivacyToggle != null) {
             setPrivacyOverlayVisible(true);
-            mPrivacyOverlay.setOnClickListener(view -> setPrivacyOverlayVisible(false));
-            mPrivacyToggle.setOnClickListener(view -> setPrivacyOverlayVisible(true));
+            mPrivacyOverlay.setOnClickListener(view -> revealSensitiveContent());
+            mPrivacyToggle.setOnClickListener(view -> hideSensitiveContent());
         }
 
         // enable custom toolbar actions
@@ -100,12 +106,61 @@ public class SessionLogEntryFragment extends Fragment {
         return v;
     }
 
+    private int getPrivacyAutoTimeoutSec() {
+        if (getActivity() == null) {
+            return 0;
+        }
+        String raw = PreferenceManager.getDefaultSharedPreferences(getActivity())
+                .getString("privacy_auto_timeout_sec", "30");
+        int value;
+        try {
+            value = Integer.parseInt(raw);
+        } catch (Exception ignored) {
+            value = 30;
+        }
+        if (value < 0) {
+            value = 0;
+        } else if (value > 3600) {
+            value = 3600;
+        }
+        return value;
+    }
+
+    private void schedulePrivacyAutoTimeout() {
+        cancelPrivacyAutoTimeout();
+        int sec = getPrivacyAutoTimeoutSec();
+        if (sec <= 0) {
+            return;
+        }
+        mPrivacyHandler.postDelayed(mPrivacyAutoTimeoutRunnable, sec * 1000L);
+    }
+
+    private void cancelPrivacyAutoTimeout() {
+        mPrivacyHandler.removeCallbacks(mPrivacyAutoTimeoutRunnable);
+    }
+
+    private void revealSensitiveContent() {
+        setPrivacyOverlayVisible(false);
+        schedulePrivacyAutoTimeout();
+    }
+
+    private void hideSensitiveContent() {
+        cancelPrivacyAutoTimeout();
+        setPrivacyOverlayVisible(true);
+    }
+
     private void setPrivacyOverlayVisible(boolean visible) {
         if (mPrivacyOverlay == null || mPrivacyToggle == null)
             return;
 
         mPrivacyOverlay.setVisibility(visible ? View.VISIBLE : View.GONE);
         mPrivacyToggle.setVisibility(visible ? View.GONE : View.VISIBLE);
+    }
+
+    @Override
+    public void onPause() {
+        cancelPrivacyAutoTimeout();
+        super.onPause();
     }
 
     @Override

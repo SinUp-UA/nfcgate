@@ -5,9 +5,59 @@ NFCGate is an Android application meant to capture, analyze, or modify NFC traff
 as a researching tool to reverse engineer protocols or assess the security of protocols against
 traffic modifications.
 
+**Current version: 2.6.0** with enhanced security, privacy, and usability features.
+
 [<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png"
     alt="Get it on F-Droid"
     height="80">](https://f-droid.org/packages/de.tu_darmstadt.seemoo.nfcgate)
+
+## New Features in 2.6.0
+
+### Security & Privacy
+- **Settings Lock**: PIN-based protection for sensitive settings (connection parameters, TLS configuration)
+  - Configurable in Settings → General → Lock Settings
+  - Protects host, port, session, TLS options from unauthorized changes
+  - Required for applying presets and recent connections
+- **Enhanced Privacy Overlay**: 
+  - Matrix animation style option (no text/icons for maximum discretion)
+  - Automatic pause state indication on overlay
+  - Configurable auto-hide timeout (0-3600 seconds)
+- **TLS Enhancements**: Improved TLS error hints and certificate trust management
+
+### Connection Management
+- **Connection Presets**: Save up to 10 connection configurations for quick switching
+  - Access via Settings → Network → Connection Presets
+  - Save current settings with custom names
+  - Apply/delete saved presets
+- **Recent Connections**: Automatically captured when partner connects
+  - View/apply/delete recent connections (last 20)
+  - Timestamp and connection details displayed
+  - Accessible from presets menu
+- **Quick Actions in Relay Mode**:
+  - "Apply Last + Reconnect": One-tap application of most recent connection
+  - "Pause Sending": Temporarily stop outgoing traffic without disconnecting
+  - Manual reconnect button with improved feedback
+
+### Diagnostics & Monitoring
+- **Status Screen**: Comprehensive self-test functionality
+  - NFC hardware detection
+  - HCE (Host Card Emulation) support check
+  - Xposed framework detection
+  - Network connectivity test
+  - TLS capability verification
+  - Access via navigation menu → Status
+- **Enhanced Logging**:
+  - Export last N seconds from session log (configurable)
+  - Improved PCAPNG export with timestamp precision
+  - Network diagnostics statistics (sent/received/dropped messages)
+- **Improved Error Reporting**: Better crash handling with Logcat integration
+
+### Stability Improvements
+- Fixed crashes when navigating to Settings during active sessions
+- Resolved fragment lifecycle issues during mode transitions
+- Improved handling of network callbacks after fragment detachment
+- Enhanced fragment transaction safety (state-saved prevention)
+- Crash shield in Settings with detailed error logging
 
 ## Notice
 
@@ -42,14 +92,36 @@ purposes.
 
 ### Building
 
-1. Initialize submodules: `git submodule update --init`
+1. Initialize submodules: `git submodule update --init --recursive`
 2. Build using Android Studio or Gradle
 
 Useful Gradle commands:
 
 - Debug APK: `./gradlew :app:assembleDebug`
-- Local “release-like” APK without a release keystore (debug-signed): `./gradlew :app:assembleReleaseUnsigned`
+- Local "release-like" APK without a release keystore (debug-signed): `./gradlew :app:assembleReleaseUnsigned`
 - Collect built APKs into `dist/` (version + timestamp in filename): `./gradlew collectApks`
+
+Build artifacts location:
+- `app/build/outputs/apk/debug/app-debug.apk`
+- `app/build/outputs/apk/releaseUnsigned/app-releaseUnsigned.apk`
+- `dist/nfcgate-2.6.0-YYYYMMDD_HHMMSS-*.apk` (after running `collectApks`)
+
+### Configuration Notes
+
+**Settings Lock**: When enabled, sensitive settings require PIN entry:
+- Connection parameters (host, port, session)
+- TLS configuration (enabled, pinning, certificates)
+- Applying connection presets or recent connections
+- PIN must be 4+ digits; set via Settings → General → Change PIN
+
+**Connection Presets**: Stored in SharedPreferences as JSON (max 10)
+- Fields: name, host, port, session, tls, tls_pinning, tls_pinning_mode, tls_pinning_spki_sha256
+- Recent connections auto-captured on NetworkStatus.PARTNER_CONNECT (max 20, deduplicated)
+
+**Pause Sending**: Drops outgoing NFC messages while keeping connection alive
+- Accessible via Relay toolbar menu
+- Visual feedback on privacy overlay (unless Matrix style active)
+- Increments dropped message counter in diagnostics
 
 ### Operating Modes
 

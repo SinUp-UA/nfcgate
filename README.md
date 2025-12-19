@@ -1,9 +1,34 @@
 # nfcgate_server
 
-Этот репозиторий содержит два независимых проекта, которые можно разворачивать отдельно:
+Этот репозиторий содержит три связанных компонента:
 
-- `server/` — TCP‑сервер‑ретранслятор NFC Gate (порт 5567)
+- `apk/` — Android приложение NFCGate (версия 2.6.0) с расширенными возможностями безопасности и удобства
+- `server/` — TCP‑сервер‑ретранслятор NFC Gate (порт 5567) с admin HTTP API и SQLite логированием
 - `web/` — административная панель (React), раздаётся через Nginx (порт 8080; способ публикации зависит от `docker-compose.yml`)
+
+## Недавние улучшения Android приложения (v2.6.0)
+
+### Безопасность и приватность
+- **Settings Lock**: PIN-защита чувствительных настроек (host, port, session, TLS)
+- **Privacy Overlay**: улучшенный режим приватности с "Matrix" стилем (без текста/иконок)
+- **Auto-timeout**: автоматическое скрытие чувствительного контента после настраиваемого таймаута
+
+### Удобство подключения
+- **Connection Presets**: сохранение и быстрое применение настроек подключения (до 10 пресетов)
+- **Recent Connections**: автоматический захват последних подключений при установке связи с партнёром
+- **Quick Actions в Relay**: кнопка "применить последнее подключение + переподключиться" прямо из режима ретрансляции
+- **Pause Sending**: временная приостановка отправки данных без разрыва соединения (с отображением на privacy overlay)
+
+### Диагностика и мониторинг
+- **Status Screen**: самотестирование (NFC, HCE, Xposed, network connectivity, TLS)
+- **Enhanced Logging**: экспорт последних N секунд из базы логов
+- **Network Diagnostics**: расширенная статистика (отправлено/получено/отброшено сообщений)
+
+### Стабильность
+- Устранены крэши при переключении между фрагментами (Settings, Relay)
+- Улучшена обработка сетевых коллбеков во время навигации
+- Защита от fragment-detach exceptions
+- Crash shield в Settings с логированием в Logcat для диагностики
 
 ## Запуск на одном VPS (Docker)
 
@@ -184,6 +209,29 @@ ss -ltnp | grep 8080
 Если ожидаешь localhost‑only, но видишь `0.0.0.0:8080`, проверь проброс порта в `docker-compose.yml` (см. блок выше).
 
 - Если web не стартует из‑за отсутствия `web/secrets/htpasswd`: создай файл по шагу выше.
+
+## Сборка Android приложения
+
+### Быстрый старт
+
+```bash
+cd apk
+git submodule update --init --recursive
+./gradlew :app:assembleDebug
+./gradlew collectApks
+```
+
+Готовые APK будут в `apk/dist/`:
+- `nfcgate-2.6.0-YYYYMMDD_HHMMSS-debug.apk` — отладочная версия
+- `nfcgate-2.6.0-YYYYMMDD_HHMMSS-releaseUnsigned.apk` — релизная без подписи
+
+### Gradle команды
+
+- Debug APK: `./gradlew :app:assembleDebug`
+- Release Unsigned APK: `./gradlew :app:assembleReleaseUnsigned`
+- Сбор всех APK в dist: `./gradlew collectApks`
+
+Подробности об использовании приложения смотри в [apk/README.md](apk/README.md).
 
 ## Запуск по отдельности
 

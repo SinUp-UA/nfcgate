@@ -171,6 +171,12 @@ public class MainActivity extends AppCompatActivity {
         // every fragment must implement BaseFragment
         Fragment fragment = getFragmentByAction(item.getItemId());
 
+        // If state is already saved (e.g. during background/rotation), fragment transactions can crash.
+        // Bail out quietly; the next resume interaction will allow navigation.
+        if (getSupportFragmentManager().isStateSaved()) {
+            return;
+        }
+
         // remove all currently opened on-top fragments (e.g. log entry)
         getSupportFragmentManager().popBackStack();
         // no fancy animation for now
@@ -179,9 +185,11 @@ public class MainActivity extends AppCompatActivity {
                 .commit();
 
         // for the looks
-        getSupportActionBar().setTitle(item.getTitle());
-        // reset the subtitle because a fragment might have changed it
-        getSupportActionBar().setSubtitle(null);
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setTitle(item.getTitle());
+            // reset the subtitle because a fragment might have changed it
+            getSupportActionBar().setSubtitle(null);
+        }
         // hide status bar
         findViewById(R.id.banner).setVisibility(View.GONE);
 

@@ -9,4 +9,25 @@
         android:icon="@drawable/ic_refresh_white_24dp"
         android:title="@string/relay_refresh"
         app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_panic"
+        android:title="@string/relay_panic"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_reconnect"
+        android:title="@string/relay_reconnect"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_pause_sending"
+        android:title="@string/relay_pause_sending"
+        android:checkable="true"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_apply_recent"
+        android:title="@string/relay_apply_recent"
+        app:showAsAction="never" />
 </menu>

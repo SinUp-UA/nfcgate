@@ -44,6 +44,7 @@
     <string name="network_privacy_status_paused">Пауза</string>
     <string name="network_privacy_status_attention">Требуется действие</string>
     <string name="network_tls_error">Сеть: ошибка TLS</string>
+    <string name="network_tls_error_hint_plain">Сеть: Ошибка TLS. TLS включён в настройках — если сервер без TLS, отключите TLS (или используйте правильный TLS-порт).</string>
     <string name="network_tls_unknown">Сеть: неизвестный сертификат</string>
     <string name="network_tls_untrusted">Сеть: сертификат не доверен</string>
 
@@ -72,6 +73,15 @@
     <string name="relay_action">Эмулировать</string>
     <string name="relay_refresh">Обновить</string>
     <string name="relay_stop_lock">Остановить и заблокировать</string>
+    <string name="relay_panic">Паника (скрыть детали)</string>
+    <string name="relay_reconnect">Переподключиться</string>
+    <string name="relay_apply_recent">Применить последнее подключение</string>
+    <string name="relay_apply_recent_empty">Недавних подключений пока нет.</string>
+    <string name="relay_apply_recent_toast">Применено. Переподключаюсь…</string>
+    <string name="relay_pause_sending">Пауза отправки</string>
+    <string name="relay_resume_sending">Продолжить отправку</string>
+    <string name="relay_pause_sending_toast">Отправка на паузе</string>
+    <string name="relay_resume_sending_toast">Отправка продолжена</string>
 
     <string name="replay_action">Воспроизвести</string>
     <string name="replay_session">Сессия %1$d</string>
@@ -86,6 +96,25 @@
     <string name="status_no">Нет</string>
     <string name="status_copy">Скопировать конфиг</string>
     <string name="status_export">Экспортировать конфиг</string>
+    <string name="status_selftest">Самопроверка подключения</string>
+    <string name="status_selftest_title">Самопроверка подключения</string>
+    <string name="status_selftest_running">Проверка…</string>
+    <string name="status_selftest_result_ok">Результат: OK</string>
+    <string name="status_selftest_result_fail">Результат: ОШИБКА</string>
+    <string name="status_selftest_kv_host">Хост: %1$s</string>
+    <string name="status_selftest_kv_port">Порт: %1$d</string>
+    <string name="status_selftest_kv_tls">TLS: %1$s</string>
+    <string name="status_selftest_kv_pinning">Пиннинг: %1$s</string>
+    <string name="status_selftest_kv_error">Ошибка: %1$s</string>
+
+    <string name="status_selftest_error_bad_host_port">Неверный хост/порт в настройках.</string>
+    <string name="status_selftest_error_bad_port">Неверный порт в настройках.</string>
+    <string name="status_selftest_error_tls">Ошибка TLS-рукопожатия.</string>
+    <string name="status_selftest_error_tls_unknown_cert">TLS: неизвестный сертификат. Откройте режим Relay, чтобы посмотреть и доверить его.</string>
+    <string name="status_selftest_error_tls_untrusted_cert">TLS: сертификат заблокирован/недоверенный.</string>
+    <string name="status_selftest_error_unknown_host">Неизвестный хост.</string>
+    <string name="status_selftest_error_timeout">Таймаут подключения.</string>
+    <string name="status_selftest_error_refused">Подключение отклонено.</string>
     <string name="status_devname">Имя устройства</string>
     <string name="status_version">Версия Android</string>
     <string name="status_version_text">%1$s %2$s (%3$d)</string>
@@ -96,6 +125,13 @@
     <string name="status_hook">Нативный хук включён</string>
     <string name="status_chip">NFC-чип</string>
     <string name="status_unknown">Неизвестно</string>
+
+    <string name="status_diag_dropped_sends">Сброшено исходящих сообщений</string>
+    <string name="status_diag_dropped_logs">Сброшено записей лога</string>
+    <string name="status_diag_watchdog_reconnects">Переподключения watchdog</string>
+    <string name="status_diag_dropped_sends_warn">Часть исходящих сообщений была сброшена (очередь отправки переполнена).</string>
+    <string name="status_diag_dropped_logs_warn">Часть записей лога была сброшена (очередь/лимит).</string>
+    <string name="status_diag_watchdog_reconnects_warn">Watchdog хотя бы один раз инициировал переподключение.</string>
 
     <string name="pcap_success">Импорт PCAP успешен</string>
     <string name="pcap_error">Ошибка импорта PCAP</string>
@@ -111,6 +147,8 @@
     <string name="log_share">Поделиться</string>
     <string name="log_error_multiple">Нельзя поделиться несколькими логами</string>
     <string name="logging_no_sessions">Сессии не найдены</string>
+    <string name="log_export_recent">Экспорт последних N секунд</string>
+    <string name="log_export_recent_empty">Нет записей за выбранный интервал.</string>
 
     <string name="network_reader">Считыватель</string>
     <string name="network_tag">Тег</string>
@@ -154,6 +192,48 @@
     <string name="settings_neutral_mode">Нейтральный режим</string>
     <string name="settings_neutral_mode_summary">Показывать простые, нетехнические сообщения на экране приватности</string>
 
+    <string name="settings_privacy_style">Стиль экрана приватности</string>
+    <string name="settings_privacy_style_summary">Выберите оформление экрана приватности</string>
+
+    <string name="settings_privacy_auto_timeout">Автоскрытие деталей (сек.)</string>
+    <string name="settings_privacy_auto_timeout_summary">После открытия деталей скрывать их автоматически (0 — отключено)</string>
+    <string name="settings_privacy_auto_timeout_dialog">Введите секунды (например, 30). 0 — отключить.</string>
+
+    <string name="settings_lock_enabled">Блокировка важных настроек</string>
+    <string name="settings_lock_enabled_summary">Требовать PIN для изменения хоста/порта/TLS/пиннинга</string>
+    <string name="settings_lock_change_pin">Сменить PIN</string>
+    <string name="settings_lock_change_pin_summary">Задать или изменить PIN для разблокировки</string>
+
+    <string name="settings_lock_unlock_title">Разблокировать настройки</string>
+    <string name="settings_lock_set_pin_title">Задать PIN</string>
+    <string name="settings_lock_pin_hint">Введите PIN (мин. 4 цифры)</string>
+    <string name="settings_lock_pin_confirm_hint">Повторите PIN</string>
+    <string name="settings_lock_wrong_pin">Неверный PIN</string>
+    <string name="settings_lock_pin_mismatch">PIN не совпадает</string>
+    <string name="settings_lock_pin_too_short">PIN слишком короткий (мин. 4 цифры)</string>
+    <string name="settings_lock_pin_set_toast">PIN сохранён</string>
+    <string name="settings_lock_pin_not_set">PIN не задан</string>
+    <string name="settings_lock_locked_summary">Заблокировано. Нажмите, чтобы разблокировать.</string>
+
+    <string name="settings_connection_presets">Пресеты подключения</string>
+    <string name="settings_connection_presets_summary">Сохранение и быстрое применение настроек хоста/порта/сессии/TLS</string>
+    <string name="settings_connection_presets_empty">Пресетов пока нет.</string>
+    <string name="settings_connection_presets_save_current">Сохранить текущие</string>
+    <string name="settings_connection_presets_name_hint">Название пресета</string>
+    <string name="settings_connection_presets_invalid_name">Введите название пресета</string>
+    <string name="settings_connection_presets_saved_toast">Пресет сохранён</string>
+    <string name="settings_connection_presets_applied_toast">Пресет применён. Переподключитесь, чтобы изменения вступили в силу.</string>
+    <string name="settings_connection_presets_deleted_toast">Пресет удалён</string>
+    <string name="settings_connection_presets_apply">Применить</string>
+    <string name="settings_connection_presets_delete">Удалить</string>
+
+    <string name="settings_connection_recents">Недавние подключения</string>
+    <string name="settings_connection_recents_empty">Недавних подключений пока нет.</string>
+    <string name="settings_connection_recents_clear">Очистить</string>
+    <string name="settings_connection_recents_cleared_toast">Недавние подключения очищены</string>
+    <string name="settings_connection_recents_applied_toast">Подключение применено. Переподключитесь, чтобы изменения вступили в силу.</string>
+    <string name="settings_connection_recents_deleted_toast">Недавнее подключение удалено</string>
+
     <string name="settings_watchdog">Сторожевой таймер соединения</string>
     <string name="settings_watchdog_summary">Переподключаться автоматически, если соединение выглядит зависшим</string>
     <string name="settings_watchdog_timeout">Таймаут watchdog (секунды)</string>
@@ -174,6 +254,10 @@
     <string name="settings_share_diagnostics">Поделиться диагностикой</string>
     <string name="settings_share_diagnostics_summary">Экспортирует базовую информацию о приложении/устройстве и текущие настройки в текстовый файл</string>
 
+    <string name="settings_export_last_seconds">Окно экспорта (секунд)</string>
+    <string name="settings_export_last_seconds_summary">Используется действием «Экспорт последних N секунд» на экране Журнал</string>
+    <string name="settings_export_last_seconds_dialog">Введите секунды (например, 30).</string>
+
     <string name="settings_send_queue_capacity">Размер очереди отправки</string>
     <string name="settings_send_queue_capacity_summary">Максимум ожидающих исходящих сообщений (применяется после переподключения)</string>
     <string name="settings_send_queue_capacity_dialog">Введите размер очереди (рекомендуется: 128–1024)</string>
@@ -188,6 +272,15 @@
 
     <string name="settings_restart_required_toast">Требуется перезапуск, чтобы изменения вступили в силу.</string>
     <string name="settings_reconnect_required_toast">Требуется переподключение, чтобы изменения вступили в силу.</string>
+
+    <string-array name="privacy_style_names">
+        <item>Текст</item>
+        <item>Матрица</item>
+    </string-array>
+    <string-array name="privacy_style_values">
+        <item>text</item>
+        <item>matrix</item>
+    </string-array>
     <string name="settings_session">Сессия</string>
     <string name="settings_session_summary">Общий номер сессии</string>
     <string name="settings_session_dialog">Введите двухзначный номер сессии</string>

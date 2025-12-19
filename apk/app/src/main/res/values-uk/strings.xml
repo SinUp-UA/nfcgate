@@ -44,6 +44,7 @@
     <string name="network_privacy_status_paused">Пауза</string>
     <string name="network_privacy_status_attention">Потрібна дія</string>
     <string name="network_tls_error">Мережа: помилка TLS</string>
+    <string name="network_tls_error_hint_plain">Мережа: Помилка TLS. TLS увімкнено в налаштуваннях — якщо сервер без TLS, вимкніть TLS (або використайте правильний TLS-порт).</string>
     <string name="network_tls_unknown">Мережа: невідомий сертифікат</string>
     <string name="network_tls_untrusted">Мережа: сертифікат не довірений</string>
 
@@ -72,6 +73,15 @@
     <string name="relay_action">Емулювати</string>
     <string name="relay_refresh">Оновити</string>
     <string name="relay_stop_lock">Зупинити та заблокувати</string>
+    <string name="relay_panic">Паніка (приховати деталі)</string>
+    <string name="relay_reconnect">Перепідключитися</string>
+        <string name="relay_apply_recent">Застосувати останнє підключення</string>
+        <string name="relay_apply_recent_empty">Нещодавніх підключень ще немає.</string>
+        <string name="relay_apply_recent_toast">Застосовано. Перепідключаюся…</string>
+        <string name="relay_pause_sending">Пауза надсилання</string>
+        <string name="relay_resume_sending">Продовжити надсилання</string>
+        <string name="relay_pause_sending_toast">Надсилання на паузі</string>
+        <string name="relay_resume_sending_toast">Надсилання продовжено</string>
 
     <string name="replay_action">Відтворити</string>
     <string name="replay_session">Сесія %1$d</string>
@@ -86,6 +96,25 @@
     <string name="status_no">Ні</string>
     <string name="status_copy">Скопіювати конфіг</string>
     <string name="status_export">Експортувати конфіг</string>
+    <string name="status_selftest">Самоперевірка підключення</string>
+    <string name="status_selftest_title">Самоперевірка підключення</string>
+    <string name="status_selftest_running">Перевірка…</string>
+    <string name="status_selftest_result_ok">Результат: OK</string>
+    <string name="status_selftest_result_fail">Результат: ПОМИЛКА</string>
+    <string name="status_selftest_kv_host">Хост: %1$s</string>
+    <string name="status_selftest_kv_port">Порт: %1$d</string>
+    <string name="status_selftest_kv_tls">TLS: %1$s</string>
+    <string name="status_selftest_kv_pinning">Піннінг: %1$s</string>
+    <string name="status_selftest_kv_error">Помилка: %1$s</string>
+
+    <string name="status_selftest_error_bad_host_port">Невірний хост/порт у налаштуваннях.</string>
+    <string name="status_selftest_error_bad_port">Невірний порт у налаштуваннях.</string>
+    <string name="status_selftest_error_tls">Помилка TLS-потискання рук.</string>
+    <string name="status_selftest_error_tls_unknown_cert">TLS: невідомий сертифікат. Відкрийте режим Relay, щоб переглянути та довірити його.</string>
+    <string name="status_selftest_error_tls_untrusted_cert">TLS: сертифікат заблокований/недовірений.</string>
+    <string name="status_selftest_error_unknown_host">Невідомий хост.</string>
+    <string name="status_selftest_error_timeout">Таймаут підключення.</string>
+    <string name="status_selftest_error_refused">Підключення відхилено.</string>
     <string name="status_devname">Назва пристрою</string>
     <string name="status_version">Версія Android</string>
     <string name="status_version_text">%1$s %2$s (%3$d)</string>
@@ -96,6 +125,13 @@
     <string name="status_hook">Нативний хук увімкнено</string>
     <string name="status_chip">NFC-чип</string>
     <string name="status_unknown">Невідомо</string>
+
+    <string name="status_diag_dropped_sends">Скинуто вихідних повідомлень</string>
+    <string name="status_diag_dropped_logs">Скинуто записів логу</string>
+    <string name="status_diag_watchdog_reconnects">Перепідключення watchdog</string>
+    <string name="status_diag_dropped_sends_warn">Частину вихідних повідомлень було скинуто (черга відправки переповнена).</string>
+    <string name="status_diag_dropped_logs_warn">Частину записів логу було скинуто (черга/ліміт).</string>
+    <string name="status_diag_watchdog_reconnects_warn">Watchdog хоча б один раз ініціював перепідключення.</string>
 
     <string name="pcap_success">Імпорт PCAP успішний</string>
     <string name="pcap_error">Помилка імпорту PCAP</string>
@@ -111,6 +147,8 @@
     <string name="log_share">Поділитися</string>
     <string name="log_error_multiple">Неможливо поділитися кількома логами</string>
     <string name="logging_no_sessions">Сесій не знайдено</string>
+    <string name="log_export_recent">Експорт останніх N секунд</string>
+    <string name="log_export_recent_empty">Немає записів за вибраний інтервал.</string>
 
     <string name="network_reader">Зчитувач</string>
     <string name="network_tag">Тег</string>
@@ -154,6 +192,48 @@
     <string name="settings_neutral_mode">Нейтральний режим</string>
     <string name="settings_neutral_mode_summary">Показувати прості, нетехнічні повідомлення на екрані приватності</string>
 
+    <string name="settings_privacy_style">Стиль екрана приватності</string>
+    <string name="settings_privacy_style_summary">Оберіть оформлення екрана приватності</string>
+
+    <string name="settings_privacy_auto_timeout">Автоприховування деталей (сек.)</string>
+    <string name="settings_privacy_auto_timeout_summary">Після відкриття деталей приховувати їх автоматично (0 — вимкнено)</string>
+    <string name="settings_privacy_auto_timeout_dialog">Введіть секунди (наприклад, 30). 0 — вимкнути.</string>
+
+    <string name="settings_lock_enabled">Блокування важливих налаштувань</string>
+    <string name="settings_lock_enabled_summary">Вимагати PIN для зміни хоста/порта/TLS/пінінгу</string>
+    <string name="settings_lock_change_pin">Змінити PIN</string>
+    <string name="settings_lock_change_pin_summary">Задати або змінити PIN для розблокування</string>
+
+    <string name="settings_lock_unlock_title">Розблокувати налаштування</string>
+    <string name="settings_lock_set_pin_title">Задати PIN</string>
+    <string name="settings_lock_pin_hint">Введіть PIN (мін. 4 цифри)</string>
+    <string name="settings_lock_pin_confirm_hint">Повторіть PIN</string>
+    <string name="settings_lock_wrong_pin">Невірний PIN</string>
+    <string name="settings_lock_pin_mismatch">PIN не збігається</string>
+    <string name="settings_lock_pin_too_short">PIN надто короткий (мін. 4 цифри)</string>
+    <string name="settings_lock_pin_set_toast">PIN збережено</string>
+    <string name="settings_lock_pin_not_set">PIN не задано</string>
+    <string name="settings_lock_locked_summary">Заблоковано. Торкніться, щоб розблокувати.</string>
+
+    <string name="settings_connection_presets">Пресети підключення</string>
+    <string name="settings_connection_presets_summary">Зберігайте й швидко застосовуйте налаштування хоста/порта/сесії/TLS</string>
+    <string name="settings_connection_presets_empty">Пресетів ще немає.</string>
+    <string name="settings_connection_presets_save_current">Зберегти поточні</string>
+    <string name="settings_connection_presets_name_hint">Назва пресета</string>
+    <string name="settings_connection_presets_invalid_name">Введіть назву пресета</string>
+    <string name="settings_connection_presets_saved_toast">Пресет збережено</string>
+    <string name="settings_connection_presets_applied_toast">Пресет застосовано. Перепідключіться, щоб зміни набули чинності.</string>
+    <string name="settings_connection_presets_deleted_toast">Пресет видалено</string>
+    <string name="settings_connection_presets_apply">Застосувати</string>
+    <string name="settings_connection_presets_delete">Видалити</string>
+
+    <string name="settings_connection_recents">Нещодавні підключення</string>
+    <string name="settings_connection_recents_empty">Нещодавніх підключень ще немає.</string>
+    <string name="settings_connection_recents_clear">Очистити</string>
+    <string name="settings_connection_recents_cleared_toast">Нещодавні підключення очищено</string>
+    <string name="settings_connection_recents_applied_toast">Підключення застосовано. Перепідключіться, щоб зміни набули чинності.</string>
+    <string name="settings_connection_recents_deleted_toast">Нещодавнє підключення видалено</string>
+
     <string name="settings_watchdog">Watchdog з’єднання</string>
     <string name="settings_watchdog_summary">Перепідключатися автоматично, якщо з’єднання виглядає завислим</string>
     <string name="settings_watchdog_timeout">Тайм-аут watchdog (секунди)</string>
@@ -174,6 +254,10 @@
     <string name="settings_share_diagnostics">Поділитися діагностикою</string>
     <string name="settings_share_diagnostics_summary">Експортує базову інформацію про застосунок/пристрій і поточні налаштування у текстовий файл</string>
 
+    <string name="settings_export_last_seconds">Вікно експорту (секунд)</string>
+    <string name="settings_export_last_seconds_summary">Використовується дією «Експорт останніх N секунд» на екрані Журнал</string>
+    <string name="settings_export_last_seconds_dialog">Введіть секунди (наприклад, 30).</string>
+
     <string name="settings_send_queue_capacity">Розмір черги відправлення</string>
     <string name="settings_send_queue_capacity_summary">Максимум очікуючих вихідних повідомлень (застосовується після перепідключення)</string>
     <string name="settings_send_queue_capacity_dialog">Введіть розмір черги (рекомендовано: 128–1024)</string>
@@ -188,6 +272,15 @@
 
     <string name="settings_restart_required_toast">Потрібен перезапуск, щоб зміни набули чинності.</string>
     <string name="settings_reconnect_required_toast">Потрібне перепідключення, щоб зміни набули чинності.</string>
+
+    <string-array name="privacy_style_names">
+        <item>Текст</item>
+        <item>Матриця</item>
+    </string-array>
+    <string-array name="privacy_style_values">
+        <item>text</item>
+        <item>matrix</item>
+    </string-array>
     <string name="settings_session">Сесія</string>
     <string name="settings_session_summary">Спільний номер сесії</string>
     <string name="settings_session_dialog">Введіть двозначний номер сесії</string>

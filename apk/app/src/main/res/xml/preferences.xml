@@ -20,6 +20,34 @@
             android:entryValues="@array/theme_values"
             android:defaultValue="dark"
             />
+
+        <ListPreference
+            android:title="@string/settings_privacy_style"
+            android:key="privacy_style"
+            android:summary="@string/settings_privacy_style_summary"
+            android:entries="@array/privacy_style_names"
+            android:entryValues="@array/privacy_style_values"
+            android:defaultValue="text" />
+
+        <EditTextPreference
+            android:title="@string/settings_privacy_auto_timeout"
+            android:key="privacy_auto_timeout_sec"
+            android:summary="@string/settings_privacy_auto_timeout_summary"
+            android:dialogMessage="@string/settings_privacy_auto_timeout_dialog"
+            android:inputType="number"
+            android:maxLength="4"
+            android:defaultValue="30" />
+
+        <CheckBoxPreference
+            android:title="@string/settings_lock_enabled"
+            android:key="settings_lock_enabled"
+            android:summary="@string/settings_lock_enabled_summary"
+            android:defaultValue="false" />
+
+        <Preference
+            android:title="@string/settings_lock_change_pin"
+            android:key="settings_lock_change_pin"
+            android:summary="@string/settings_lock_change_pin_summary" />
     </PreferenceCategory>
     <PreferenceCategory
         android:title="@string/settings_category_network"
@@ -52,6 +80,11 @@
             android:maxLength="2"
             android:defaultValue="1"
             />
+
+            <Preference
+                android:title="@string/settings_connection_presets"
+                android:key="connection_presets"
+                android:summary="@string/settings_connection_presets_summary" />
     </PreferenceCategory>
 
     <Preference
@@ -121,6 +154,15 @@
             android:title="@string/settings_share_diagnostics"
             android:key="share_diagnostics"
             android:summary="@string/settings_share_diagnostics_summary" />
+
+        <EditTextPreference
+            android:title="@string/settings_export_last_seconds"
+            android:key="export_last_seconds"
+            android:summary="@string/settings_export_last_seconds_summary"
+            android:dialogMessage="@string/settings_export_last_seconds_dialog"
+            android:inputType="number"
+            android:maxLength="5"
+            android:defaultValue="30" />
 
         <EditTextPreference
             android:title="@string/settings_send_queue_capacity"

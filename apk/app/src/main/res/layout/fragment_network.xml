@@ -79,54 +79,66 @@
     </LinearLayout>
 
     <!-- Privacy-friendly overlay (hides technical logs by default) -->
-    <LinearLayout
+    <FrameLayout
         android:id="@+id/lay_privacy_overlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="?android:attr/windowBackground"
-        android:gravity="center"
-        android:orientation="vertical"
-        android:padding="24dp"
         android:visibility="gone">
 
-        <ImageView
-            android:id="@+id/img_privacy_state"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:src="@drawable/ic_nfc_grey_42dp"
-            android:scaleType="centerInside" />
+        <de.tu_darmstadt.seemoo.nfcgate.gui.component.MatrixRainView
+            android:id="@+id/matrix_rain"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
 
-        <TextView
-            android:id="@+id/txt_privacy_title"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="@string/network_privacy_title"
-            style="@style/TextAppearance.AppCompat.Medium" />
+        <LinearLayout
+            android:id="@+id/lay_privacy_content"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="24dp">
 
-        <TextView
-            android:id="@+id/txt_privacy_subtitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:text="@string/network_privacy_subtitle"
-            style="@style/TextAppearance.AppCompat.Small" />
+            <ImageView
+                android:id="@+id/img_privacy_state"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/ic_nfc_grey_42dp"
+                android:scaleType="centerInside" />
 
-        <ProgressBar
-            android:id="@+id/prg_privacy_pulse"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:indeterminate="true" />
+            <TextView
+                android:id="@+id/txt_privacy_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/network_privacy_title"
+                style="@style/TextAppearance.AppCompat.Medium" />
 
-        <TextView
-            android:id="@+id/txt_privacy_hint"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:text="@string/network_privacy_hint"
-            style="@style/TextAppearance.AppCompat.Caption" />
-    </LinearLayout>
+            <TextView
+                android:id="@+id/txt_privacy_subtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/network_privacy_subtitle"
+                style="@style/TextAppearance.AppCompat.Small" />
+
+            <ProgressBar
+                android:id="@+id/prg_privacy_pulse"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:indeterminate="true" />
+
+            <TextView
+                android:id="@+id/txt_privacy_hint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:text="@string/network_privacy_hint"
+                style="@style/TextAppearance.AppCompat.Caption" />
+        </LinearLayout>
+    </FrameLayout>
 
     <!-- Small toggle shown when overlay is hidden -->
     <TextView

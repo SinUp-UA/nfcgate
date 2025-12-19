@@ -13,6 +13,7 @@ import de.tu_darmstadt.seemoo.nfcgate.gui.MainActivity;
 import de.tu_darmstadt.seemoo.nfcgate.network.c2s.C2S;
 import de.tu_darmstadt.seemoo.nfcgate.network.data.NetworkStatus;
 import de.tu_darmstadt.seemoo.nfcgate.util.DiagnosticsStats;
+import de.tu_darmstadt.seemoo.nfcgate.util.ConnectionPresets;
 import de.tu_darmstadt.seemoo.nfcgate.util.NfcComm;
 import de.tu_darmstadt.seemoo.nfcgate.util.PrefUtils;
 import de.tu_darmstadt.seemoo.nfcgate.util.RecentEvents;
@@ -22,8 +23,8 @@ import static de.tu_darmstadt.seemoo.nfcgate.network.c2s.C2S.ServerData.Opcode;
 public class NetworkManager implements ServerConnection.Callback {
     private static final String TAG = "NetworkManager";
 
-    private static final long RECONNECT_INITIAL_DELAY_MS = 500;
-    private static final long RECONNECT_MAX_DELAY_MS = 30_000;
+    // User-friendly backoff: 1s → 2s → 5s → 10s → 30s (then stays at 30s)
+    private static final long[] RECONNECT_BACKOFF_MS = new long[] { 1_000, 2_000, 5_000, 10_000, 30_000 };
 
     private static final long WATCHDOG_TICK_MS = 5_000;
 
@@ -38,7 +39,7 @@ public class NetworkManager implements ServerConnection.Callback {
     private final Callback mCallback;
 
     private final Handler mHandler = new Handler(Looper.getMainLooper());
-    private long mReconnectDelayMs = RECONNECT_INITIAL_DELAY_MS;
+    private int mReconnectAttempt = 0;
     private boolean mManualDisconnect = false;
     private boolean mReconnectScheduled = false;
     private final Runnable mReconnectRunnable = new Runnable() {
@@ -55,6 +56,8 @@ public class NetworkManager implements ServerConnection.Callback {
 
     private long mLastActivityMs = 0;
     private NetworkStatus mLastStatus = null;
+
+    private volatile boolean mPausedSending = false;
     private final Runnable mWatchdogRunnable = new Runnable() {
         @Override
         public void run() {
@@ -119,6 +122,18 @@ public class NetworkManager implements ServerConnection.Callback {
         sendServer(Opcode.OP_SYN, null);
     }
 
+    /**
+     * Immediate reconnect requested by the user.
+     * Unlike the auto-reconnect loop, this resets backoff and forces a new connection attempt now.
+     */
+    public void reconnectNow() {
+        RecentEvents.info("Manual reconnect requested");
+        mManualDisconnect = false;
+        mReconnectAttempt = 0;
+        cancelReconnect();
+        connect();
+    }
+
     public void disconnect() {
         mManualDisconnect = true;
         cancelReconnect();
@@ -131,7 +146,23 @@ public class NetworkManager implements ServerConnection.Callback {
         }
     }
 
+    public boolean isPausedSending() {
+        return mPausedSending;
+    }
+
+    public void setPausedSending(boolean paused) {
+        if (mPausedSending == paused) {
+            return;
+        }
+        mPausedSending = paused;
+        RecentEvents.warn(paused ? "Sending paused" : "Sending resumed");
+    }
+
     public void send(NfcComm data) {
+        if (mPausedSending) {
+            DiagnosticsStats.incDroppedSendMessages();
+            return;
+        }
         // queue data message
         touchActivity();
         sendServer(Opcode.OP_PSH, data.toByteArray());
@@ -194,6 +225,12 @@ public class NetworkManager implements ServerConnection.Callback {
                 break;
             case PARTNER_CONNECT:
                 RecentEvents.info("Partner connected");
+                try {
+                    // Auto-capture last successful connection settings.
+                    ConnectionPresets.recordRecentFromCurrentSettings(mActivity);
+                } catch (Exception ignored) {
+                    // best-effort
+                }
                 break;
             case PARTNER_LEFT:
                 RecentEvents.warn("Partner disconnected");
@@ -218,7 +255,7 @@ public class NetworkManager implements ServerConnection.Callback {
         switch (status) {
             case CONNECTED:
             case PARTNER_CONNECT:
-                mReconnectDelayMs = RECONNECT_INITIAL_DELAY_MS;
+                mReconnectAttempt = 0;
                 cancelReconnect();
                 break;
             case ERROR:
@@ -336,8 +373,11 @@ public class NetworkManager implements ServerConnection.Callback {
         }
         mReconnectScheduled = true;
 
-        long delay = mReconnectDelayMs;
-        mReconnectDelayMs = Math.min(RECONNECT_MAX_DELAY_MS, mReconnectDelayMs * 2);
+        int idx = Math.min(mReconnectAttempt, RECONNECT_BACKOFF_MS.length - 1);
+        long delay = RECONNECT_BACKOFF_MS[idx];
+        if (mReconnectAttempt < Integer.MAX_VALUE) {
+            mReconnectAttempt++;
+        }
         Log.w(TAG, "Scheduling reconnect in " + delay + "ms");
         mHandler.postDelayed(mReconnectRunnable, delay);
     }
