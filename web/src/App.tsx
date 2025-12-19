@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 type ExportFormat = 'jsonl' | 'csv'
 
@@ -168,9 +168,13 @@ function App() {
 
   const [tailStatus, setTailStatus] = useState<string>('')
   const [tailError, setTailError] = useState<string>('')
+  const [tailLimit, setTailLimit] = useState<number>(100)
+  const [tailAutoRefresh, setTailAutoRefresh] = useState<boolean>(true)
   const [tailRows, setTailRows] = useState<
     { ts: string; tag: string; origin: string; session: number | null; args: unknown[] }[]
   >([])
+
+  const tailPollInFlight = useRef<boolean>(false)
 
   const [adminStatus, setAdminStatus] = useState<string>('')
   const [adminError, setAdminError] = useState<string>('')
@@ -244,6 +248,52 @@ function App() {
       void loadAdmins()
     }
   }, [authMode])
+
+  useEffect(() => {
+    if (authMode !== 'authed') return
+    if (page !== 'analytics') return
+    if (!tailAutoRefresh) return
+
+    let cancelled = false
+    const pollEveryMs = 2000
+
+    async function tick() {
+      if (tailPollInFlight.current) return
+      tailPollInFlight.current = true
+      try {
+        const limit = Number.isFinite(tailLimit) && tailLimit > 0 ? Math.min(Math.floor(tailLimit), 2000) : 200
+        let url = `/api/logs/tail?limit=${limit}`
+        if (tag.trim()) url += `&tag=${encodeURIComponent(tag.trim())}`
+        if (origin.trim()) url += `&origin=${encodeURIComponent(origin.trim())}`
+        if (session.trim()) url += `&session=${encodeURIComponent(session.trim())}`
+
+        const resp = await apiFetch(url, { cache: 'no-store' })
+        if (cancelled) return
+        if (!resp.ok) {
+          setTailError(`Ошибка tail: ${resp.status}`)
+          return
+        }
+        const data = (await resp.json()) as {
+          rows?: { ts: string; tag: string; origin: string; session: number | null; args: unknown[] }[]
+        }
+        if (cancelled) return
+        setTailError('')
+        setTailRows(data.rows ?? [])
+      } catch {
+        if (cancelled) return
+        setTailError('Ошибка сети при загрузке')
+      } finally {
+        tailPollInFlight.current = false
+      }
+    }
+
+    void tick()
+    const id = window.setInterval(() => void tick(), pollEveryMs)
+    return () => {
+      cancelled = true
+      window.clearInterval(id)
+    }
+  }, [authMode, page, tailAutoRefresh, tailLimit, tag, origin, session])
 
   useEffect(() => {
     if (!adminUsers.length) return
@@ -415,7 +465,8 @@ function App() {
     setTailStatus('Загрузка...')
     setTailRows([])
 
-    let url = `/api/logs/tail?limit=200`
+    const limit = Number.isFinite(tailLimit) && tailLimit > 0 ? Math.min(Math.floor(tailLimit), 2000) : 200
+    let url = `/api/logs/tail?limit=${limit}`
     if (tag.trim()) url += `&tag=${encodeURIComponent(tag.trim())}`
     if (origin.trim()) url += `&origin=${encodeURIComponent(origin.trim())}`
     if (session.trim()) url += `&session=${encodeURIComponent(session.trim())}`
@@ -1003,7 +1054,52 @@ function App() {
           ) : null}
         </Card>
 
-        <Card title="Последние события" description="Показывает последние 200 событий из SQLite." action={<Button onClick={() => void loadTail()}>Обновить</Button>}>
+        <Card
+          title="Последние события"
+          description={`Автообновление: ${tailAutoRefresh ? 'вкл' : 'выкл'} (~каждые 2с). Лимит: ${tailLimit}.`}
+        >
+          <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <FieldLabel label="Лимит">
+              <SelectInput
+                value={String(tailLimit)}
+                onChange={(e) => setTailLimit(Number(e.target.value) || 100)}
+              >
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+                <option value="500">500</option>
+                <option value="1000">1000</option>
+              </SelectInput>
+            </FieldLabel>
+
+            <FieldLabel label="Tag (опционально)">
+              <TextInput placeholder="например: server или log" value={tag} onChange={(e) => setTag(e.target.value)} />
+            </FieldLabel>
+
+            <FieldLabel label="Origin (опционально)">
+              <TextInput placeholder="например: 10.0.0.5:12345" value={origin} onChange={(e) => setOrigin(e.target.value)} />
+            </FieldLabel>
+
+            <FieldLabel label="Session (опционально)">
+              <TextInput placeholder="например: 1" value={session} onChange={(e) => setSession(e.target.value)} />
+            </FieldLabel>
+
+            <div className="flex flex-col gap-2">
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={tailAutoRefresh}
+                  onChange={(e) => setTailAutoRefresh(e.target.checked)}
+                />
+                Автообновление
+              </label>
+
+              <Button variant="primary" className="w-full" onClick={() => void loadTail()}>
+                Обновить
+              </Button>
+            </div>
+          </div>
+
           {tailStatus ? <p className="text-sm text-slate-600">{tailStatus}</p> : null}
           {tailError ? <p className="text-sm text-red-600">{tailError}</p> : null}
 
