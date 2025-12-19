@@ -12,7 +12,16 @@ From repo root:
 docker compose up --build -d
 ```
 
-By default, the web UI is bound to `127.0.0.1:8080` (see root compose + Nginx config).
+In the current repo root `docker-compose.yml`, the web UI is published on `0.0.0.0:8080` (reachable via both `127.0.0.1` and the server's public IP).
+
+If you want to bind the UI to localhost only (recommended for VPS), change the port mapping in the root compose to:
+
+```yaml
+ports:
+  - "127.0.0.1:8080:8080"
+```
+
+Note: the secure setup in `web/docker-compose.secure.yml` binds to localhost by default.
 
 ## Protected access
 
@@ -48,4 +57,30 @@ npm install
 npm run dev
 ```
 
-Note: the dev server is intended to bind to localhost only.
+The dev server is intended to bind to localhost only.
+
+### Dev API proxy requirement
+
+In dev mode, the UI calls `/api/*` and relies on the Vite proxy (`vite.config.ts`) to forward it to:
+
+- `http://127.0.0.1:8081`
+
+So you must have the server admin HTTP API running on that address.
+
+Two common options:
+
+1) **Start root Docker compose** (recommended, easiest)
+
+```bash
+docker compose up --build -d
+```
+
+This starts the server and publishes the admin API as `127.0.0.1:8081` specifically for local dev.
+
+2) **Run the server locally**
+
+- Start `python -m nfcgate_server.server` with `NFCGATE_ADMIN_HTTP_PORT=8081` (and an appropriate log dir).
+
+### First run
+
+On a fresh install, the UI will prompt you to create the first admin (bootstrap). After that you can log in normally.

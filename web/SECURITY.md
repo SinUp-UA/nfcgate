@@ -16,7 +16,9 @@ A hardened Nginx container is provided:
 - HTTP Basic Auth required for every request
 - Security headers (CSP, frame-ancestors, nosniff, etc.)
 - `read_only` container filesystem + `tmpfs` for writable dirs
-- Port is bound to localhost only (`127.0.0.1:8080`)
+- Port binding depends on your Docker port mapping.
+	- For a VPS, **recommended**: bind to localhost only (`127.0.0.1:8080:8080`) and access it via SSH tunnel or an HTTPS reverse proxy.
+	- If you publish `8080:8080`, the UI will be reachable from the network/public IP (still behind Basic Auth, but exposed).
 
 ## How to run the protected web in Docker
 
@@ -34,8 +36,12 @@ If you don't, an easy Windows alternative is:
 - `cd web`
 - `docker compose -f docker-compose.secure.yml up --build`
 
+This secure compose binds the UI to localhost only by default (`127.0.0.1:8080:8080`).
+
 Open:
 - `http://127.0.0.1:8080`
+
+Tip (VPS): if you run the root compose, ensure the `web` service uses `"127.0.0.1:8080:8080"` if you want localhost-only exposure.
 
 ## Hardening options (depending on deployment)
 

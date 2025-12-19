@@ -4,6 +4,8 @@ services:
       context: ./server
     ports:
       - "5567:5567"
+      # Localhost-only exposure for dev tooling (e.g. Vite proxy). Not public.
+      - "127.0.0.1:8081:8081"
     environment:
       # Internal admin API (for web UI export). Not exposed to the host.
       NFCGATE_ADMIN_HTTP_PORT: "8081"
@@ -21,8 +23,8 @@ services:
     build:
       context: ./web
     ports:
-      # Keep UI private by default; put a reverse proxy with TLS in front if needed.
-      - "127.0.0.1:8080:8080"
+      # Expose UI on all interfaces (reachable via 127.0.0.1 and the server's public IP).
+      - "8080:8080"
     read_only: true
     tmpfs:
       - /var/cache/nginx

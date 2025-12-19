@@ -7,6 +7,14 @@ export default defineConfig({
   server: {
     host: '127.0.0.1',
     strictPort: true,
+    proxy: {
+      // During `npm run dev`, forward API calls to the Python admin HTTP API.
+      // In production, Nginx (web container) proxies `/api/*` to the server.
+      '/api': {
+        target: 'http://127.0.0.1:8081',
+        changeOrigin: true,
+      },
+    },
   },
   preview: {
     host: '127.0.0.1',

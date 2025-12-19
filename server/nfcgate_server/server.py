@@ -134,6 +134,36 @@ class _LogApiHandler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(b"Not Found")
 
+    def do_PATCH(self):
+        parsed = urllib.parse.urlparse(self.path)
+
+        authed_user = self._require_auth_user()
+        if authed_user is None:
+            return
+
+        if parsed.path.startswith("/api/admin/users/"):
+            return self._handle_admin_user_update(authed_user, parsed.path)
+
+        self.send_response(404)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(b"Not Found")
+
+    def do_DELETE(self):
+        parsed = urllib.parse.urlparse(self.path)
+
+        authed_user = self._require_auth_user()
+        if authed_user is None:
+            return
+
+        if parsed.path.startswith("/api/admin/users/"):
+            return self._handle_admin_user_delete(authed_user, parsed.path)
+
+        self.send_response(404)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(b"Not Found")
+
     def _send_json(self, status: int, payload: dict, *, no_store: bool = True):
         self.send_response(int(status))
         self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -171,6 +201,35 @@ class _LogApiHandler(http.server.BaseHTTPRequestHandler):
             return conn
         except Exception:
             return None
+
+    @staticmethod
+    def _ensure_admin_schema(conn: sqlite3.Connection) -> None:
+        """Ensure minimal tables exist for panel authentication.
+
+        This allows running the admin HTTP API against an empty/new DB file
+        (or a DB created by earlier versions) without requiring a separate
+        migration step.
+        """
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS admin_users ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "username TEXT NOT NULL UNIQUE, "
+            "pw_salt BLOB NOT NULL, "
+            "pw_hash BLOB NOT NULL, "
+            "pw_iters INTEGER NOT NULL, "
+            "created_unix INTEGER NOT NULL, "
+            "disabled INTEGER NOT NULL DEFAULT 0"
+            ")"
+        )
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS admin_tokens ("
+            "token_hash BLOB PRIMARY KEY, "
+            "user_id INTEGER NOT NULL, "
+            "created_unix INTEGER NOT NULL, "
+            "expires_unix INTEGER NOT NULL"
+            ")"
+        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_admin_tokens_user ON admin_tokens(user_id)")
 
     def _handle_auth_status(self):
         conn = self._open_db(query_only=True)
@@ -255,6 +314,7 @@ class _LogApiHandler(http.server.BaseHTTPRequestHandler):
             return self._send_json(503, {"error": "log database not configured"})
 
         try:
+            self._ensure_admin_schema(conn)
             row = conn.execute("SELECT COUNT(*) FROM admin_users WHERE disabled = 0").fetchone()
             if row and int(row[0] or 0) == 0:
                 return self._send_json(409, {"error": "no_admins"})
@@ -285,6 +345,12 @@ class _LogApiHandler(http.server.BaseHTTPRequestHandler):
                 },
             )
         except Exception:
+            try:
+                import traceback
+
+                traceback.print_exc()
+            except Exception:
+                pass
             return self._send_json(500, {"error": "login_failed"})
         finally:
             try:
@@ -307,6 +373,7 @@ class _LogApiHandler(http.server.BaseHTTPRequestHandler):
             return self._send_json(503, {"error": "log database not configured"})
 
         try:
+            self._ensure_admin_schema(conn)
             row = conn.execute("SELECT COUNT(*) FROM admin_users WHERE disabled = 0").fetchone()
             if row and int(row[0] or 0) > 0:
                 return self._send_json(409, {"error": "already_initialized"})
@@ -333,6 +400,12 @@ class _LogApiHandler(http.server.BaseHTTPRequestHandler):
         except sqlite3.IntegrityError:
             return self._send_json(409, {"error": "username_taken"})
         except Exception:
+            try:
+                import traceback
+
+                traceback.print_exc()
+            except Exception:
+                pass
             return self._send_json(500, {"error": "bootstrap_failed"})
         finally:
             try:
@@ -382,6 +455,7 @@ class _LogApiHandler(http.server.BaseHTTPRequestHandler):
             return self._send_json(503, {"error": "log database not configured"})
 
         try:
+            self._ensure_admin_schema(conn)
             salt = secrets.token_bytes(16)
             iters = 210_000
             pw_hash = _pbkdf2_sha256(password, salt, iters)
@@ -406,7 +480,171 @@ class _LogApiHandler(http.server.BaseHTTPRequestHandler):
         except sqlite3.IntegrityError:
             return self._send_json(409, {"error": "username_taken"})
         except Exception:
+            try:
+                import traceback
+
+                traceback.print_exc()
+            except Exception:
+                pass
             return self._send_json(500, {"error": "create_failed"})
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+    @staticmethod
+    def _parse_admin_user_id(path: str) -> int | None:
+        # Expected: /api/admin/users/<id>
+        parts = [p for p in (path or "").split("/") if p]
+        if len(parts) != 4:
+            return None
+        if parts[0] != "api" or parts[1] != "admin" or parts[2] != "users":
+            return None
+        try:
+            return int(parts[3])
+        except Exception:
+            return None
+
+    def _handle_admin_user_update(self, authed_user: dict, path: str):
+        user_id = self._parse_admin_user_id(path)
+        if user_id is None:
+            return self._send_json(404, {"error": "not_found"})
+
+        body = self._read_json_body()
+        if body is None:
+            return self._send_json(400, {"error": "bad_json"})
+
+        if not isinstance(body, dict):
+            return self._send_json(400, {"error": "bad_json"})
+
+        password = body.get("password")
+        disabled = body.get("disabled")
+
+        wants_pw = password is not None
+        wants_disabled = disabled is not None
+
+        if not wants_pw and not wants_disabled:
+            return self._send_json(400, {"error": "missing_fields"})
+
+        if wants_pw:
+            password = str(password or "")
+            if not password:
+                return self._send_json(400, {"error": "missing_password"})
+
+        if wants_disabled:
+            disabled_val = bool(disabled)
+            if disabled_val and int(authed_user.get("id") or 0) == int(user_id):
+                return self._send_json(400, {"error": "cannot_disable_self"})
+
+        conn = self._open_db(query_only=False)
+        if conn is None:
+            return self._send_json(503, {"error": "log database not configured"})
+
+        try:
+            self._ensure_admin_schema(conn)
+            row = conn.execute(
+                "SELECT id FROM admin_users WHERE id = ?",
+                (int(user_id),),
+            ).fetchone()
+            if not row:
+                return self._send_json(404, {"error": "not_found"})
+
+            updated_pw = False
+            if wants_pw:
+                salt = secrets.token_bytes(16)
+                iters = 210_000
+                pw_hash = _pbkdf2_sha256(password, salt, iters)
+                conn.execute(
+                    "UPDATE admin_users SET pw_salt = ?, pw_hash = ?, pw_iters = ? WHERE id = ?",
+                    (sqlite3.Binary(salt), sqlite3.Binary(pw_hash), int(iters), int(user_id)),
+                )
+                updated_pw = True
+
+            if wants_disabled:
+                conn.execute(
+                    "UPDATE admin_users SET disabled = ? WHERE id = ?",
+                    (1 if disabled_val else 0, int(user_id)),
+                )
+
+            # If password changed or user was disabled, revoke tokens.
+            if updated_pw or (wants_disabled and disabled_val):
+                conn.execute("DELETE FROM admin_tokens WHERE user_id = ?", (int(user_id),))
+
+            conn.commit()
+
+            user = conn.execute(
+                "SELECT id, username, created_unix, disabled FROM admin_users WHERE id = ?",
+                (int(user_id),),
+            ).fetchone()
+            if not user:
+                return self._send_json(404, {"error": "not_found"})
+
+            return self._send_json(
+                200,
+                {
+                    "updated": {
+                        "id": int(user[0]),
+                        "username": str(user[1]),
+                        "created_unix": int(user[2]) if user[2] is not None else None,
+                        "disabled": bool(int(user[3] or 0)),
+                    },
+                    "updated_by": {"id": int(authed_user.get("id")), "username": str(authed_user.get("username"))},
+                },
+            )
+        except Exception:
+            try:
+                import traceback
+
+                traceback.print_exc()
+            except Exception:
+                pass
+            return self._send_json(500, {"error": "update_failed"})
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+    def _handle_admin_user_delete(self, authed_user: dict, path: str):
+        user_id = self._parse_admin_user_id(path)
+        if user_id is None:
+            return self._send_json(404, {"error": "not_found"})
+
+        if int(authed_user.get("id") or 0) == int(user_id):
+            return self._send_json(400, {"error": "cannot_delete_self"})
+
+        conn = self._open_db(query_only=False)
+        if conn is None:
+            return self._send_json(503, {"error": "log database not configured"})
+
+        try:
+            self._ensure_admin_schema(conn)
+            row = conn.execute(
+                "SELECT id, username FROM admin_users WHERE id = ?",
+                (int(user_id),),
+            ).fetchone()
+            if not row:
+                return self._send_json(404, {"error": "not_found"})
+
+            conn.execute("DELETE FROM admin_tokens WHERE user_id = ?", (int(user_id),))
+            conn.execute("DELETE FROM admin_users WHERE id = ?", (int(user_id),))
+            conn.commit()
+            return self._send_json(
+                200,
+                {
+                    "deleted": {"id": int(row[0]), "username": str(row[1])},
+                    "deleted_by": {"id": int(authed_user.get("id")), "username": str(authed_user.get("username"))},
+                },
+            )
+        except Exception:
+            try:
+                import traceback
+
+                traceback.print_exc()
+            except Exception:
+                pass
+            return self._send_json(500, {"error": "delete_failed"})
         finally:
             try:
                 conn.close()

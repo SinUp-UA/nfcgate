@@ -4,6 +4,8 @@ type ExportFormat = 'jsonl' | 'csv'
 
 type AuthMode = 'checking' | 'login' | 'bootstrap' | 'authed'
 
+type PageKey = 'users' | 'analytics'
+
 function toIsoLocalInputValue(d: Date) {
   const pad = (n: number) => String(n).padStart(2, '0')
   return (
@@ -45,6 +47,58 @@ function formatBytes(n: number | null | undefined): string {
   if (mb < 1024) return `${mb.toFixed(1)} MiB`
   const gb = mb / 1024
   return `${gb.toFixed(1)} GiB`
+}
+
+function cx(...classes: Array<string | null | undefined | false>) {
+  return classes.filter(Boolean).join(' ')
+}
+
+function Card(props: { title: string; action?: React.ReactNode; children: React.ReactNode; description?: string }) {
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white">
+      <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-4 py-3">
+        <div>
+          <h2 className="text-sm font-semibold text-slate-900">{props.title}</h2>
+          {props.description ? <p className="mt-1 text-xs text-slate-600">{props.description}</p> : null}
+        </div>
+        {props.action ? <div className="shrink-0">{props.action}</div> : null}
+      </div>
+      <div className="px-4 py-4">{props.children}</div>
+    </section>
+  )
+}
+
+function FieldLabel(props: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="text-sm">
+      <div className="mb-1 text-xs font-medium text-slate-700">{props.label}</div>
+      {props.children}
+    </label>
+  )
+}
+
+function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
+  return <input {...props} className={cx('w-full rounded border border-slate-300 px-3 py-2 text-sm', props.className)} />
+}
+
+function SelectInput(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <select {...props} className={cx('w-full rounded border border-slate-300 px-3 py-2 text-sm', props.className)} />
+  )
+}
+
+function Button(props: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'danger' }) {
+  const variant = props.variant ?? 'secondary'
+  const base = 'rounded px-3 py-2 text-sm font-medium disabled:opacity-50'
+  const styles =
+    variant === 'primary'
+      ? 'bg-slate-900 text-white'
+      : variant === 'danger'
+        ? 'border border-red-300 bg-white text-red-700'
+        : 'border border-slate-300 bg-white text-slate-900'
+  return (
+    <button {...props} className={cx(base, styles, props.className)} />
+  )
 }
 
 function App() {
@@ -126,6 +180,15 @@ function App() {
   const [newAdminUsername, setNewAdminUsername] = useState<string>('')
   const [newAdminPassword, setNewAdminPassword] = useState<string>('')
 
+  const [page, setPage] = useState<PageKey>('analytics')
+
+  const [editAdminId, setEditAdminId] = useState<number | ''>('')
+  const [editAdminPassword, setEditAdminPassword] = useState<string>('')
+  const [editAdminDisabled, setEditAdminDisabled] = useState<boolean>(false)
+
+  const [deleteAdminId, setDeleteAdminId] = useState<number | ''>('')
+  const [deleteConfirmUsername, setDeleteConfirmUsername] = useState<string>('')
+
   function persistAuth(nextToken: string, nextUser: string) {
     setAuthToken(nextToken)
     setAuthUser(nextUser)
@@ -182,6 +245,19 @@ function App() {
     }
   }, [authMode])
 
+  useEffect(() => {
+    if (!adminUsers.length) return
+
+    if (editAdminId !== '') {
+      const u = adminUsers.find((x) => x.id === editAdminId)
+      if (u) setEditAdminDisabled(Boolean(u.disabled))
+    }
+    if (deleteAdminId !== '') {
+      const u = adminUsers.find((x) => x.id === deleteAdminId)
+      setDeleteConfirmUsername(u?.username ?? '')
+    }
+  }, [adminUsers, editAdminId, deleteAdminId])
+
   async function submitAuth(endpoint: '/api/auth/login' | '/api/auth/bootstrap') {
     setAuthError('')
     if (!authUsername.trim() || !authPassword) {
@@ -196,13 +272,28 @@ function App() {
         body: JSON.stringify({ username: authUsername.trim(), password: authPassword }),
       })
       if (!resp.ok) {
-        const payload = (await resp.json().catch(() => ({}))) as { error?: string }
+        const contentType = resp.headers.get('content-type') ?? ''
+        const payload = (await resp
+          .json()
+          .catch(() => null)) as { error?: string } | null
         if (payload.error === 'no_admins') {
           setAuthMode('bootstrap')
           setAuthError('Нет администраторов. Создайте первого администратора.')
           return
         }
-        setAuthError(`Ошибка авторизации: ${payload.error ?? resp.status}`)
+        if (payload?.error) {
+          setAuthError(`Ошибка авторизации: ${payload.error}`)
+          return
+        }
+
+        // Non-JSON errors often come from a dev proxy (e.g. backend not running).
+        let extra = ''
+        if (!contentType.toLowerCase().includes('application/json')) {
+          const text = await resp.text().catch(() => '')
+          const snippet = text.replaceAll(/\s+/g, ' ').trim().slice(0, 180)
+          if (snippet) extra = ` (${snippet})`
+        }
+        setAuthError(`Ошибка авторизации: ${resp.status}${extra}`)
         return
       }
       const data = (await resp.json()) as { token: string; user?: { username?: string } }
@@ -406,173 +497,409 @@ function App() {
     }
   }
 
-  return (
-    <div className="min-h-screen bg-white text-slate-900">
-      <div className="mx-auto max-w-3xl px-6 py-10">
-        <h1 className="text-3xl font-semibold tracking-tight">NFC Gate</h1>
-        <div className="mt-2 flex items-center justify-between gap-3 text-sm">
-          <div className="text-slate-600">
-            {authMode === 'authed' ? (
-              <span>
-                Вы вошли как <span className="font-medium text-slate-900">{authUser || 'admin'}</span>
-              </span>
-            ) : (
-              <span className="text-slate-600">Требуется вход в панель</span>
-            )}
+  async function updateAdmin() {
+    setAdminError('')
+    setAdminStatus('Сохранение изменений...')
+    if (editAdminId === '') {
+      setAdminStatus('')
+      setAdminError('Выберите пользователя для редактирования')
+      return
+    }
+
+    const payload: Record<string, unknown> = { disabled: editAdminDisabled }
+    if (editAdminPassword) payload.password = editAdminPassword
+
+    try {
+      const resp = await apiFetch(`/api/admin/users/${editAdminId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (resp.status === 401) {
+        logout()
+        return
+      }
+      if (!resp.ok) {
+        const p = (await resp.json().catch(() => ({}))) as { error?: string }
+        setAdminStatus('')
+        setAdminError(`Ошибка сохранения: ${p.error ?? resp.status}`)
+        return
+      }
+      setEditAdminPassword('')
+      setAdminStatus('Готово')
+      await loadAdmins()
+    } catch {
+      setAdminStatus('')
+      setAdminError('Ошибка сети при сохранении')
+    }
+  }
+
+  async function deleteAdmin() {
+    setAdminError('')
+    setAdminStatus('Удаление пользователя...')
+    if (deleteAdminId === '') {
+      setAdminStatus('')
+      setAdminError('Выберите пользователя для удаления')
+      return
+    }
+    const u = adminUsers.find((x) => x.id === deleteAdminId)
+    if (!u) {
+      setAdminStatus('')
+      setAdminError('Пользователь не найден')
+      return
+    }
+    if (deleteConfirmUsername.trim() !== u.username) {
+      setAdminStatus('')
+      setAdminError('Для удаления введите username точно как в списке')
+      return
+    }
+
+    try {
+      const resp = await apiFetch(`/api/admin/users/${deleteAdminId}`, { method: 'DELETE' })
+      if (resp.status === 401) {
+        logout()
+        return
+      }
+      if (!resp.ok) {
+        const p = (await resp.json().catch(() => ({}))) as { error?: string }
+        setAdminStatus('')
+        setAdminError(`Ошибка удаления: ${p.error ?? resp.status}`)
+        return
+      }
+      setDeleteAdminId('')
+      setDeleteConfirmUsername('')
+      setAdminStatus('Готово')
+      await loadAdmins()
+    } catch {
+      setAdminStatus('')
+      setAdminError('Ошибка сети при удалении')
+    }
+  }
+
+  function AuthScreen() {
+    return (
+      <div className="mx-auto max-w-lg px-6 py-12">
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">NFCGate Admin</h1>
+        <p className="mt-2 text-sm text-slate-600">Вход в панель администратора</p>
+
+        <div className="mt-6 rounded-lg border border-slate-200 bg-white p-4">
+          <h2 className="text-sm font-semibold text-slate-900">
+            {authMode === 'bootstrap' ? 'Создать первого администратора' : 'Авторизация'}
+          </h2>
+          <p className="mt-2 text-sm text-slate-600">
+            {authMode === 'bootstrap'
+              ? 'Панель ещё не инициализирована — создайте первого администратора.'
+              : 'Введите логин и пароль администратора.'}
+          </p>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <FieldLabel label="Логин">
+              <TextInput value={authUsername} onChange={(e) => setAuthUsername(e.target.value)} autoComplete="username" />
+            </FieldLabel>
+            <FieldLabel label="Пароль">
+              <TextInput
+                type="password"
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                autoComplete={authMode === 'bootstrap' ? 'new-password' : 'current-password'}
+              />
+            </FieldLabel>
+
+            <div className="flex items-end">
+              <Button
+                className="w-full"
+                variant="primary"
+                onClick={() =>
+                  void submitAuth(authMode === 'bootstrap' ? '/api/auth/bootstrap' : '/api/auth/login')
+                }
+                disabled={authMode === 'checking'}
+              >
+                {authMode === 'bootstrap' ? 'Создать и войти' : 'Войти'}
+              </Button>
+            </div>
           </div>
-          {authMode === 'authed' ? (
-            <button
-              className="rounded border border-slate-300 px-3 py-2"
-              onClick={() => logout()}
-            >
-              Выйти
-            </button>
-          ) : null}
+
+          {authMode === 'checking' ? <p className="mt-3 text-sm text-slate-600">Проверка статуса...</p> : null}
+          {authError ? <p className="mt-3 text-sm text-red-600">{authError}</p> : null}
+        </div>
+      </div>
+    )
+  }
+
+  function Sidebar() {
+    const NavButton = (props: { k: PageKey; label: string }) => (
+      <button
+        className={cx(
+          'flex w-full items-center justify-between rounded px-3 py-2 text-sm',
+          page === props.k ? 'bg-slate-800 text-white' : 'text-slate-200 hover:bg-slate-800/60',
+        )}
+        onClick={() => setPage(props.k)}
+      >
+        <span className="font-medium">{props.label}</span>
+      </button>
+    )
+
+    return (
+      <aside className="w-64 shrink-0 bg-slate-900 text-slate-100">
+        <div className="border-b border-slate-800 px-4 py-4">
+          <div className="text-sm font-semibold">NFCGate</div>
+          <div className="mt-1 text-xs text-slate-300">Admin panel</div>
         </div>
 
-        {authMode !== 'authed' ? (
-          <div className="mt-6 rounded-lg border border-slate-200 p-4">
-            <h2 className="text-lg font-medium">
-              {authMode === 'bootstrap' ? 'Создать первого администратора' : 'Вход в панель'}
-            </h2>
-            <p className="mt-2 text-sm text-slate-600">
-              {authMode === 'bootstrap'
-                ? 'Панель ещё не инициализирована — создайте первого администратора.'
-                : 'Введите логин и пароль администратора.'}
-            </p>
+        <div className="px-3 py-3">
+          <nav className="space-y-1">
+            <NavButton k="analytics" label="Аналитика" />
+            <NavButton k="users" label="Пользователи" />
+          </nav>
+        </div>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <label className="text-sm">
-                <div className="mb-1 text-slate-700">Логин</div>
-                <input
-                  className="w-full rounded border border-slate-300 px-3 py-2"
-                  value={authUsername}
-                  onChange={(e) => setAuthUsername(e.target.value)}
-                  autoComplete="username"
-                />
-              </label>
-              <label className="text-sm">
-                <div className="mb-1 text-slate-700">Пароль</div>
-                <input
-                  className="w-full rounded border border-slate-300 px-3 py-2"
-                  type="password"
-                  value={authPassword}
-                  onChange={(e) => setAuthPassword(e.target.value)}
-                  autoComplete={authMode === 'bootstrap' ? 'new-password' : 'current-password'}
-                />
-              </label>
+        <div className="mt-auto border-t border-slate-800 px-4 py-3">
+          <div className="text-xs text-slate-300">Вы вошли как</div>
+          <div className="mt-1 truncate text-sm font-medium text-white">{authUser || 'admin'}</div>
+          <Button className="mt-3 w-full" onClick={() => logout()}>
+            Выйти
+          </Button>
+        </div>
+      </aside>
+    )
+  }
 
-              <div className="flex items-end">
-                <button
-                  className="w-full rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white"
-                  onClick={() => void submitAuth(authMode === 'bootstrap' ? '/api/auth/bootstrap' : '/api/auth/login')}
-                  disabled={authMode === 'checking'}
-                >
-                  {authMode === 'bootstrap' ? 'Создать и войти' : 'Войти'}
-                </button>
-              </div>
-            </div>
+  function UsersPage() {
+    const selectedEdit = editAdminId === '' ? null : adminUsers.find((u) => u.id === editAdminId) ?? null
+    const selectedDelete = deleteAdminId === '' ? null : adminUsers.find((u) => u.id === deleteAdminId) ?? null
 
-            {authMode === 'checking' ? (
-              <p className="mt-3 text-sm text-slate-600">Проверка статуса...</p>
-            ) : null}
-            {authError ? <p className="mt-3 text-sm text-red-600">{authError}</p> : null}
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-lg font-semibold text-slate-900">Пользователи</h1>
+          <p className="mt-1 text-sm text-slate-600">Создание, редактирование и удаление администраторов панели.</p>
+        </div>
+
+        {adminStatus ? <p className="text-sm text-slate-600">{adminStatus}</p> : null}
+        {adminError ? <p className="text-sm text-red-600">{adminError}</p> : null}
+
+        <div className="grid gap-6 xl:grid-cols-3">
+          <div className="xl:col-span-2">
+            <Card
+              title="Список пользователей"
+              action={<Button onClick={() => void loadAdmins()}>Обновить</Button>}
+              description="Таблица текущих администраторов."
+            >
+              {adminUsers.length ? (
+                <div className="overflow-hidden rounded border border-slate-200">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50 text-left">
+                      <tr>
+                        <th className="px-3 py-2">username</th>
+                        <th className="px-3 py-2">disabled</th>
+                        <th className="px-3 py-2">created</th>
+                        <th className="px-3 py-2">actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {adminUsers.map((u) => (
+                        <tr key={u.id} className="border-t border-slate-200">
+                          <td className="px-3 py-2">{u.username}</td>
+                          <td className="px-3 py-2">{u.disabled ? 'yes' : 'no'}</td>
+                          <td className="px-3 py-2 whitespace-nowrap">{formatUnixSeconds(u.created_unix)}</td>
+                          <td className="px-3 py-2">
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                className="px-2 py-1 text-xs"
+                                onClick={() => {
+                                  setEditAdminId(u.id)
+                                  setEditAdminPassword('')
+                                  setEditAdminDisabled(Boolean(u.disabled))
+                                }}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                className="px-2 py-1 text-xs"
+                                variant="danger"
+                                disabled={u.username === authUser}
+                                onClick={() => {
+                                  setDeleteAdminId(u.id)
+                                  setDeleteConfirmUsername('')
+                                }}
+                              >
+                                Delete
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-sm text-slate-600">Нет данных</p>
+              )}
+            </Card>
           </div>
-        ) : (
-          <>
-            <p className="mt-2 text-slate-600">Выгрузка логов и аналитика по диапазону времени</p>
 
-            <div className="mt-6 rounded-lg border border-slate-200 p-4">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="text-sm">
-                  <div className="mb-1 text-slate-700">Начало</div>
-                  <input
-                    className="w-full rounded border border-slate-300 px-3 py-2"
-                    type="datetime-local"
-                    value={startLocal}
-                    onChange={(e) => setStartLocal(e.target.value)}
+          <div className="space-y-6">
+            <Card title="Создать пользователя" description="Создаёт нового администратора.">
+              <div className="grid gap-3">
+                <FieldLabel label="Username">
+                  <TextInput value={newAdminUsername} onChange={(e) => setNewAdminUsername(e.target.value)} />
+                </FieldLabel>
+                <FieldLabel label="Пароль">
+                  <TextInput
+                    type="password"
+                    value={newAdminPassword}
+                    onChange={(e) => setNewAdminPassword(e.target.value)}
+                    autoComplete="new-password"
                   />
+                </FieldLabel>
+                <Button variant="primary" onClick={() => void createAdmin()}>
+                  Создать
+                </Button>
+              </div>
+            </Card>
+
+            <Card title="Редактировать пользователя" description="Сброс пароля и/или отключение пользователя.">
+              <div className="grid gap-3">
+                <FieldLabel label="Пользователь">
+                  <SelectInput
+                    value={editAdminId === '' ? '' : String(editAdminId)}
+                    onChange={(e) => setEditAdminId(e.target.value ? Number(e.target.value) : '')}
+                  >
+                    <option value="">Выберите...</option>
+                    {adminUsers.map((u) => (
+                      <option key={u.id} value={String(u.id)}>
+                        {u.username}
+                      </option>
+                    ))}
+                  </SelectInput>
+                </FieldLabel>
+
+                <FieldLabel label="Новый пароль (опционально)">
+                  <TextInput
+                    type="password"
+                    value={editAdminPassword}
+                    onChange={(e) => setEditAdminPassword(e.target.value)}
+                    placeholder="Оставьте пустым, чтобы не менять"
+                    autoComplete="new-password"
+                  />
+                </FieldLabel>
+
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={editAdminDisabled}
+                    onChange={(e) => setEditAdminDisabled(e.target.checked)}
+                    disabled={selectedEdit?.username === authUser}
+                  />
+                  <span className="text-slate-800">Отключить (disabled)</span>
                 </label>
+                {selectedEdit?.username === authUser ? (
+                  <p className="text-xs text-slate-600">Нельзя отключить текущего пользователя.</p>
+                ) : null}
 
-            <label className="text-sm">
-              <div className="mb-1 text-slate-700">Конец</div>
-              <input
-                className="w-full rounded border border-slate-300 px-3 py-2"
-                type="datetime-local"
-                value={endLocal}
-                onChange={(e) => setEndLocal(e.target.value)}
-              />
-            </label>
+                <Button variant="primary" onClick={() => void updateAdmin()}>
+                  Сохранить
+                </Button>
+              </div>
+            </Card>
 
-            <label className="text-sm">
-              <div className="mb-1 text-slate-700">Формат</div>
-              <select
-                className="w-full rounded border border-slate-300 px-3 py-2"
-                value={format}
-                onChange={(e) => setFormat(e.target.value as ExportFormat)}
-              >
+            <Card title="Удалить пользователя" description="Удаляет выбранного пользователя (кроме текущего).">
+              <div className="grid gap-3">
+                <FieldLabel label="Пользователь">
+                  <SelectInput
+                    value={deleteAdminId === '' ? '' : String(deleteAdminId)}
+                    onChange={(e) => setDeleteAdminId(e.target.value ? Number(e.target.value) : '')}
+                  >
+                    <option value="">Выберите...</option>
+                    {adminUsers
+                      .filter((u) => u.username !== authUser)
+                      .map((u) => (
+                        <option key={u.id} value={String(u.id)}>
+                          {u.username}
+                        </option>
+                      ))}
+                  </SelectInput>
+                </FieldLabel>
+
+                {selectedDelete ? (
+                  <>
+                    <FieldLabel label={`Введите username для подтверждения (${selectedDelete.username})`}>
+                      <TextInput value={deleteConfirmUsername} onChange={(e) => setDeleteConfirmUsername(e.target.value)} />
+                    </FieldLabel>
+                    <Button variant="danger" onClick={() => void deleteAdmin()}>
+                      Удалить
+                    </Button>
+                  </>
+                ) : (
+                  <p className="text-sm text-slate-600">Выберите пользователя для удаления.</p>
+                )}
+              </div>
+            </Card>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  function AnalyticsPage() {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-lg font-semibold text-slate-900">Аналитика</h1>
+          <p className="mt-1 text-sm text-slate-600">Выгрузка логов, APDU статистика и последние события.</p>
+        </div>
+
+        <Card title="Фильтры" description="Фильтры применяются к экспорту, аналитике и tail.">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <FieldLabel label="Начало">
+              <TextInput type="datetime-local" value={startLocal} onChange={(e) => setStartLocal(e.target.value)} />
+            </FieldLabel>
+
+            <FieldLabel label="Конец">
+              <TextInput type="datetime-local" value={endLocal} onChange={(e) => setEndLocal(e.target.value)} />
+            </FieldLabel>
+
+            <FieldLabel label="Tag (опционально)">
+              <TextInput placeholder="например: server или log" value={tag} onChange={(e) => setTag(e.target.value)} />
+            </FieldLabel>
+
+            <FieldLabel label="Origin (опционально)">
+              <TextInput placeholder="например: 10.0.0.5:12345" value={origin} onChange={(e) => setOrigin(e.target.value)} />
+            </FieldLabel>
+
+            <FieldLabel label="Session (опционально)">
+              <TextInput placeholder="например: 1" value={session} onChange={(e) => setSession(e.target.value)} />
+            </FieldLabel>
+          </div>
+        </Card>
+
+        <Card
+          title="Выгрузка логов"
+          description="Скачивание логов по диапазону времени."
+          action={
+            <div className="flex items-center gap-2">
+              <SelectInput value={format} onChange={(e) => setFormat(e.target.value as ExportFormat)}>
                 <option value="jsonl">JSONL</option>
                 <option value="csv">CSV</option>
-              </select>
-            </label>
-
-            <label className="text-sm">
-              <div className="mb-1 text-slate-700">Tag (опционально)</div>
-              <input
-                className="w-full rounded border border-slate-300 px-3 py-2"
-                placeholder="например: server или log"
-                value={tag}
-                onChange={(e) => setTag(e.target.value)}
-              />
-            </label>
-
-                <label className="text-sm">
-                  <div className="mb-1 text-slate-700">Origin (опционально)</div>
-                  <input
-                    className="w-full rounded border border-slate-300 px-3 py-2"
-                    placeholder="например: 10.0.0.5:12345"
-                    value={origin}
-                    onChange={(e) => setOrigin(e.target.value)}
-                  />
-                </label>
-
-                <label className="text-sm">
-                  <div className="mb-1 text-slate-700">Session (опционально)</div>
-                  <input
-                    className="w-full rounded border border-slate-300 px-3 py-2"
-                    placeholder="например: 1"
-                    value={session}
-                    onChange={(e) => setSession(e.target.value)}
-                  />
-                </label>
-
-                <div className="flex items-end">
-                  <button
-                    className="w-full rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white"
-                    onClick={() => void download()}
-                  >
-                    Скачать
-                  </button>
-                </div>
-              </div>
-
-              {status ? <p className="mt-3 text-sm text-slate-600">{status}</p> : null}
-              {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
+              </SelectInput>
+              <Button variant="primary" onClick={() => void download()}>
+                Скачать
+              </Button>
             </div>
+          }
+        >
+          {status ? <p className="text-sm text-slate-600">{status}</p> : null}
+          {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        </Card>
 
-        <div className="mt-6 rounded-lg border border-slate-200 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg font-medium">Аналитика APDU</h2>
-            <button
-              className="rounded border border-slate-300 px-3 py-2 text-sm"
-              onClick={() => void loadStats()}
-            >
-              Показать
-            </button>
-          </div>
-
-          {statsStatus ? <p className="mt-3 text-sm text-slate-600">{statsStatus}</p> : null}
-          {statsError ? <p className="mt-3 text-sm text-red-600">{statsError}</p> : null}
+        <Card
+          title="Аналитика APDU"
+          description="ТОП команды и ответы карты по APDU."
+          action={<Button onClick={() => void loadStats()}>Показать</Button>}
+        >
+          {statsStatus ? <p className="text-sm text-slate-600">{statsStatus}</p> : null}
+          {statsError ? <p className="text-sm text-red-600">{statsError}</p> : null}
 
           {stats ? (
             <div className="mt-4 space-y-4">
@@ -580,9 +907,7 @@ function App() {
                 <div>Разобрано APDU: {stats.parsed_apdu}</div>
                 <div>Ошибок парсинга: {stats.parse_errors}</div>
                 <div>Строк логов просмотрено: {stats.total_log_rows_scanned}</div>
-                <div>
-                  80CA (CLA+INS) встречается: {stats.highlight?.['80CA'] ?? 0}
-                </div>
+                <div>80CA (CLA+INS) встречается: {stats.highlight?.['80CA'] ?? 0}</div>
               </div>
 
               <div>
@@ -676,128 +1001,11 @@ function App() {
               </div>
             </div>
           ) : null}
-        </div>
+        </Card>
 
-        <div className="mt-6 rounded-lg border border-slate-200 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg font-medium">Статус</h2>
-            <button
-              className="rounded border border-slate-300 px-3 py-2 text-sm"
-              onClick={() => void loadHealth()}
-            >
-              Проверить
-            </button>
-          </div>
-
-          {healthStatus ? <p className="mt-3 text-sm text-slate-600">{healthStatus}</p> : null}
-          {healthError ? <p className="mt-3 text-sm text-red-600">{healthError}</p> : null}
-
-          {health ? (
-            <div className="mt-3 text-sm text-slate-700">
-              <div>DB: {health.db_configured ? 'OK' : 'нет'}</div>
-              <div>APDU indexing: {health.protobuf_indexing ? 'OK' : 'нет'}</div>
-              <div>Log bytes: {health.log_bytes_mode ?? 'unknown'}</div>
-              <div>Uptime: {health.uptime_seconds ?? '—'} sec</div>
-              <div>DB size: {formatBytes(health.db_file_bytes)}</div>
-              <div>
-                Rows: logs={health.counts?.logs ?? '—'}, apdu_events={health.counts?.apdu_events ?? '—'}, payloads={health.counts?.payloads ?? '—'}
-              </div>
-              <div>
-                Latest: logs={formatUnixSeconds(health.latest?.log_ts_unix)}, apdu={formatUnixSeconds(health.latest?.apdu_ts_unix)}
-              </div>
-              <div>
-                Retention: db_days={health.retention?.db_days ?? 0}, jsonl_days={health.retention?.jsonl_days ?? 0},
-                sweep_seconds={health.retention?.sweep_seconds ?? 0}
-              </div>
-              <div>Started: {formatUnixSeconds(health.started_unix)}</div>
-              <div>Server: {health.server}</div>
-            </div>
-          ) : null}
-        </div>
-
-        <div className="mt-6 rounded-lg border border-slate-200 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg font-medium">Администраторы</h2>
-            <button
-              className="rounded border border-slate-300 px-3 py-2 text-sm"
-              onClick={() => void loadAdmins()}
-            >
-              Обновить
-            </button>
-          </div>
-
-          {adminStatus ? <p className="mt-3 text-sm text-slate-600">{adminStatus}</p> : null}
-          {adminError ? <p className="mt-3 text-sm text-red-600">{adminError}</p> : null}
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <label className="text-sm">
-              <div className="mb-1 text-slate-700">Новый логин</div>
-              <input
-                className="w-full rounded border border-slate-300 px-3 py-2"
-                value={newAdminUsername}
-                onChange={(e) => setNewAdminUsername(e.target.value)}
-              />
-            </label>
-            <label className="text-sm">
-              <div className="mb-1 text-slate-700">Новый пароль</div>
-              <input
-                className="w-full rounded border border-slate-300 px-3 py-2"
-                type="password"
-                value={newAdminPassword}
-                onChange={(e) => setNewAdminPassword(e.target.value)}
-              />
-            </label>
-            <div className="flex items-end">
-              <button
-                className="w-full rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white"
-                onClick={() => void createAdmin()}
-              >
-                Создать администратора
-              </button>
-            </div>
-          </div>
-
-          {adminUsers.length ? (
-            <div className="mt-4 overflow-hidden rounded border border-slate-200">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-left">
-                  <tr>
-                    <th className="px-3 py-2">username</th>
-                    <th className="px-3 py-2">disabled</th>
-                    <th className="px-3 py-2">created</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {adminUsers.map((u) => (
-                    <tr key={u.id} className="border-t border-slate-200">
-                      <td className="px-3 py-2">{u.username}</td>
-                      <td className="px-3 py-2">{u.disabled ? 'yes' : 'no'}</td>
-                      <td className="px-3 py-2">{formatUnixSeconds(u.created_unix)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : null}
-        </div>
-
-        <div className="mt-6 rounded-lg border border-slate-200 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg font-medium">Последние события</h2>
-            <button
-              className="rounded border border-slate-300 px-3 py-2 text-sm"
-              onClick={() => void loadTail()}
-            >
-              Обновить
-            </button>
-          </div>
-
-          <p className="mt-2 text-sm text-slate-600">
-            Показывает последние 200 событий из SQLite (учитывает Tag/Origin/Session сверху).
-          </p>
-
-          {tailStatus ? <p className="mt-3 text-sm text-slate-600">{tailStatus}</p> : null}
-          {tailError ? <p className="mt-3 text-sm text-red-600">{tailError}</p> : null}
+        <Card title="Последние события" description="Показывает последние 200 событий из SQLite." action={<Button onClick={() => void loadTail()}>Обновить</Button>}>
+          {tailStatus ? <p className="text-sm text-slate-600">{tailStatus}</p> : null}
+          {tailError ? <p className="text-sm text-red-600">{tailError}</p> : null}
 
           {tailRows.length ? (
             <div className="mt-3 overflow-hidden rounded border border-slate-200">
@@ -824,15 +1032,66 @@ function App() {
                 </tbody>
               </table>
             </div>
-          ) : null}
-        </div>
+          ) : (
+            <p className="text-sm text-slate-600">Нет данных</p>
+          )}
+        </Card>
 
-            <p className="mt-6 text-sm text-slate-600">
-              Примечание: логи доступны только если контейнер web запущен с монтированием
-              `/logs` и включён Basic Auth.
+        <Card title="Статус" action={<Button onClick={() => void loadHealth()}>Проверить</Button>}>
+          {healthStatus ? <p className="text-sm text-slate-600">{healthStatus}</p> : null}
+          {healthError ? <p className="text-sm text-red-600">{healthError}</p> : null}
+
+          {health ? (
+            <div className="mt-3 grid gap-2 text-sm text-slate-700 sm:grid-cols-2">
+              <div>DB: {health.db_configured ? 'OK' : 'нет'}</div>
+              <div>APDU indexing: {health.protobuf_indexing ? 'OK' : 'нет'}</div>
+              <div>Log bytes: {health.log_bytes_mode ?? 'unknown'}</div>
+              <div>Uptime: {health.uptime_seconds ?? '—'} sec</div>
+              <div>DB size: {formatBytes(health.db_file_bytes)}</div>
+              <div>
+                Rows: logs={health.counts?.logs ?? '—'}, apdu_events={health.counts?.apdu_events ?? '—'}, payloads={health.counts?.payloads ?? '—'}
+              </div>
+              <div>
+                Latest: logs={formatUnixSeconds(health.latest?.log_ts_unix)}, apdu={formatUnixSeconds(health.latest?.apdu_ts_unix)}
+              </div>
+              <div>
+                Retention: db_days={health.retention?.db_days ?? 0}, jsonl_days={health.retention?.jsonl_days ?? 0}, sweep_seconds={health.retention?.sweep_seconds ?? 0}
+              </div>
+              <div>Started: {formatUnixSeconds(health.started_unix)}</div>
+              <div className="sm:col-span-2">Server: {health.server}</div>
+            </div>
+          ) : null}
+        </Card>
+      </div>
+    )
+  }
+
+  if (authMode !== 'authed') {
+    return (
+      <div className="min-h-screen bg-slate-100 text-slate-900">
+        <AuthScreen />
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-100 text-slate-900">
+      <div className="flex min-h-screen">
+        <Sidebar />
+
+        <main className="flex-1">
+          <div className="border-b border-slate-200 bg-white">
+            <div className="px-6 py-4">
+              <div className="text-sm text-slate-600">Панель администратора</div>
+            </div>
+          </div>
+          <div className="px-6 py-6">
+            {page === 'users' ? <UsersPage /> : <AnalyticsPage />}
+            <p className="mt-8 text-xs text-slate-500">
+              Примечание: логи доступны только если контейнер web запущен с монтированием /logs и включён Basic Auth.
             </p>
-          </>
-        )}
+          </div>
+        </main>
       </div>
     </div>
   )

@@ -4,8 +4,10 @@
 - This repo contains 3 related components:
   - `apk/`: Android NFCGate application (modes: capture/relay/replay/clone). Built with Gradle wrapper.
   - `server/`: Python TCP relay server (default `5567`) + internal admin HTTP API for log export/analytics.
-  - `web/`: React (Vite) admin UI built to static files and served by hardened Nginx (default `127.0.0.1:8080`).
+  - `web/`: React (Vite) admin UI built to static files and served by hardened Nginx (port `8080`; host binding depends on compose).
 - Root `docker-compose.yml` runs `server` + `web`: Nginx proxies `/api/*` to the server’s internal admin HTTP (`8081`) and can expose raw log files from a mounted `/logs/` directory.
+
+Note: `web/docker-compose.secure.yml` binds the UI to localhost by default (`127.0.0.1:8080:8080`).
 
 ## Critical flows & boundaries
 - TCP relay protocol framing (see `server/test.py` and `server/nfcgate_server/server.py`):

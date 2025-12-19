@@ -15,10 +15,16 @@ Build and run with docker-compose:
 
 The server will listen on port 5567 and is published as `localhost:5567`.
 
+Note: with Docker port publishing, it is typically reachable via both `localhost:5567` and the host's IP address (depending on firewall rules).
+
 ## Admin HTTP API (for web panel)
 
 The server also exposes an internal admin HTTP API (default port `8081`, configurable via `NFCGATE_ADMIN_HTTP_PORT`).
 This API is intended to be reverse-proxied by the `web/` container at `/api/*`.
+
+Note: the `server/docker-compose.yml` setup publishes only the TCP relay port (`5567`) to the host. The admin HTTP API (`8081`) stays internal unless you run the repo root compose or add an explicit port mapping.
+
+In the repo root `docker-compose.yml`, the admin API is additionally published as `127.0.0.1:8081:8081` for local dev tooling (e.g. Vite proxy). It is not meant to be exposed publicly.
 
 ### Authentication
 
@@ -28,6 +34,11 @@ Important note when running behind Nginx Basic Auth:
 
 - `Authorization` header is used for `Basic ...`.
 - The panel therefore sends the API token via `X-NFCGate-Token` header.
+
+### Local dev (with Vite)
+
+If you run the web UI in dev mode (`npm run dev`), Vite proxies `/api/*` to `http://127.0.0.1:8081`.
+Make sure the admin HTTP API is reachable there (either run the server locally, or start the root compose).
 
 ## Ubuntu VPS notes
 
