@@ -15,3 +15,6 @@ web/.env.*
 # Logs
 *.log
 server/server.log
+
+# Local scripts / utilities
+adpu_log/
