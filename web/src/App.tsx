@@ -276,7 +276,7 @@ function App() {
         const payload = (await resp
           .json()
           .catch(() => null)) as { error?: string } | null
-        if (payload.error === 'no_admins') {
+        if (payload?.error === 'no_admins') {
           setAuthMode('bootstrap')
           setAuthError('Нет администраторов. Создайте первого администратора.')
           return
